@@ -25,6 +25,8 @@
   <img src="media/colheita-feliz-gameplay.gif" alt="Jogando: a mão marota pegando a colheita da vizinha, com o cachorro de guarda andando" width="720">
   <br>
   <a href="media/colheita-feliz-trailer.mp4">🎬 Ver o vídeo de 30 segundos (MP4)</a>
+  <br>
+  <a href="https://youtube.com/shorts/TfuNS-3d-nA">🎙️ Ver a prévia narrada (YouTube)</a>
 </p>
 
 Lembra da fazendinha que todo mundo jogava com os amigos, de olho no relógio para colher antes que alguém passasse
@@ -83,7 +85,7 @@ aparece.</sub>
 Você precisa do **Node 24** (o mesmo do `Dockerfile`) e do npm. Docker é opcional.
 
 ```bash
-git clone https://github.com/douglac/colheita-io-clean.git colheita-feliz && cd colheita-feliz
+git clone https://github.com/douglac/colheita-io.git colheita-feliz && cd colheita-feliz
 npm ci
 npm run dev        # http://localhost:3100
 ```

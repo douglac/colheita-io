@@ -15,6 +15,7 @@ Copyright (c) 2026 Colheita Feliz.
 | `public/icons/` | ícones do app (PWA) |
 | `public/sfx/`, `public/sounds/`, `public/audio/` | arquivos de som, se existirem (hoje os sons são sintetizados em código) |
 | `docs/` | documentação de design, se existir |
+| `media/` | capturas de tela e gravações do jogo |
 
 O resto do repositório, inclusive o código que gera sons em `src/`, segue a PolyForm Noncommercial 1.0.0 (`LICENSE`).
 
