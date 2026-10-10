@@ -1,0 +1,20 @@
+.context
+node_modules
+.next
+.data
+.git
+.env*
+!.env.example
+research
+docs
+tests
+e2e
+playwright-report
+test-results
+backups
+*.md
+Dockerfile
+docker-compose.yml
+# Bancada da geração de arte (folhas-fonte, sheets, prévias): versionada, mas o jogo não lê em runtime.
+public/art/manifest
+public/art/preview.png

@@ -1,0 +1,50 @@
+{
+  "name": "colheita-feliz",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "test": "vitest run",
+    "typecheck": "next typegen && tsc --noEmit",
+    "migrate": "tsx scripts/migrate.ts",
+    "seed": "tsx scripts/seed.ts",
+    "test:pg": "scripts/test-pg.sh",
+    "db:up": "docker compose up -d db mailpit",
+    "db:backup": "scripts/db-backup.sh",
+    "db:restore": "scripts/db-restore.sh",
+    "load": "tsx scripts/loadtest.ts",
+    "lint": "eslint .",
+    "e2e": "playwright test",
+    "ci": "scripts/ci.sh"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "next": "^16.4.0",
+    "pg": "^8.23.0",
+    "nodemailer": "^7.0.13",
+    "pixi.js": "^8.22.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^4.0.0"
+  }
+}

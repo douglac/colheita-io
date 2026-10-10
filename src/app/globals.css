@@ -1,0 +1,993 @@
+:root {
+  --sky: #7cc8ff; --sky2: #c9ecff; --grass: #8fd14f; --wood: #8a5a2b; --cream: #fff8e7;
+  --gold: #ffc93c; --green: #44c767; --red: #ff5a5f; --ink: #3b2a1a;
+  /* ---- Design system (janelas): espaço, tipografia, cores do jogo, raios e alvo de toque ---- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --fs-title: 22px; --fs-sub: 14px; --fs-body: 15px; --fs-label: 12px; --fs-num: 17px;
+  --wood-dark: #6b3f1f; --cream-2: #fff3c4; --line: #e2c894; --ink-soft: #6b4a2b;
+  --green-btn: #23843f; --green-btn-edge: #17602c; --gold-edge: #c98a00; --red-ink: #a8322a;
+  --r-sm: 10px; --r: 14px; --r-lg: 18px; --tap: 44px; --focus: #1d6fd1;
+  font-family: ui-rounded, 'SF Pro Rounded', 'Nunito', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; color: var(--ink); background: linear-gradient(var(--sky), var(--sky2) 70%); overscroll-behavior: none; }
+button { font: inherit; }
+.muted { color: var(--ink-soft); }
+.warn { color: var(--red-ink); font-weight: 700; }
+/* Foco visível em tudo que é clicável (teclado); o clique do mouse não acende. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+.dialog:focus { outline: none; }
+
+.btn { border: 3px solid var(--wood); background: var(--cream); border-radius: 14px; padding: 8px 14px; font-weight: 800; color: var(--ink); cursor: pointer; text-decoration: none; box-shadow: 0 3px 0 var(--wood); display: inline-flex; gap: 6px; align-items: center; }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.small { padding: 4px 10px; font-size: 14px; border-width: 2px; }
+/* Botão dentro do cartão do depósito (ex.: "Ficar com ela (+1)"): cabe na largura do cartão, quebrando a linha se precisar. */
+.btn.cell-btn { max-width: 100%; padding-inline: 6px; white-space: normal; text-align: center; justify-content: center; line-height: 1.15; }
+.btn.big { font-size: 20px; padding: 12px 22px; background: var(--gold); }
+.btn.ghost { background: transparent; box-shadow: none; border-color: transparent; }
+.btn em { font-style: normal; background: var(--red); color: #fff; border-radius: 99px; padding: 0 7px; font-size: 13px; }
+
+.login { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
+.login h1 { margin: 0; font-size: 48px; color: #fff; text-shadow: 0 4px 0 var(--wood), 0 0 2px var(--wood); letter-spacing: 1px; }
+.login-form { display: flex; flex-direction: column; gap: 10px; width: min(320px, 100%); }
+.login-form input { font: inherit; font-size: 20px; padding: 12px; border-radius: 14px; border: 3px solid var(--wood); text-align: center; }
+.loading { display: grid; place-items: center; height: 100%; font-weight: 800; color: #fff; text-shadow: 0 2px 0 var(--wood); }
+/* Tela de carregamento ilustrada (lote Q, A8: fazendeiro com café na varanda, espantalho na horta). A imagem é o
+   fundo; o texto e os brotinhos ficam numa faixa embaixo, no caminho de terra. JPG derivado do PNG (1,7 MB → 240 KB). */
+.loading, .visit-loading { background: #8cd23c url(/art/ui/loading_farm.jpg) 12% 40% / cover no-repeat; /* em retrato, o fazendeiro da varanda fica à vista */ }
+.loading { min-height: 100dvh; align-items: end; padding-bottom: 12vh; }
+.loading-text, .visit-loading p { background: rgba(74, 44, 18, 0.72); border-radius: 99px; padding: 8px 20px; }
+.visit-loading { min-height: 100dvh; }
+.scene-cover { position: absolute; inset: 0; z-index: 60; } /* a mesma tela de carregamento, até a cena desenhar */
+
+.game { position: relative; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: #8cd23c; }
+.hud { position: relative; z-index: 4; display: flex; align-items: center; gap: 10px; padding: 10px 12px; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--gold); border: 3px solid #fff; display: grid; place-items: center; font-weight: 900; font-size: 22px; box-shadow: 0 2px 0 var(--wood); }
+.who { flex: 1; min-width: 0; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.who strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp { display: flex; align-items: center; gap: 6px; }
+.lvl { background: #23803f; /* contraste 5:1 com o branco (o --green dava 2,2:1) */ border-radius: 99px; padding: 0 8px; font-weight: 900; font-size: 13px; text-shadow: none; }
+.bar { flex: 1; max-width: 140px; height: 10px; background: rgba(0,0,0,.25); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); }
+.money { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; font-weight: 900; }
+.money span { background: var(--cream); border: 2px solid var(--wood); border-radius: 99px; padding: 1px 10px; min-width: 84px; display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; }
+.money .pop { color: #b8284a; } /* 4,5:1 sobre o creme */
+.money .pop-lvl { font-size: 0.7em; font-weight: 700; }
+/* Barra de XP e popularidade tocáveis: abrem o tooltip */
+button.xp { background: none; border: 0; padding: 4px 0; margin: -4px 0; color: inherit; font: inherit; text-shadow: inherit; cursor: pointer; width: 100%; }
+.money button.pop { background: var(--cream); border: 2px solid var(--wood); border-radius: 99px; padding: 1px 10px; min-width: 84px; display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; font: inherit; font-weight: 900; cursor: pointer; }
+.who, .money { position: relative; }
+.hud-tip { position: absolute; top: calc(100% + 6px); white-space: nowrap; z-index: 30; display: flex; flex-direction: column; gap: 2px; background: #fffdf4; color: #4a2c12; border: 3px solid var(--wood); border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: 14px; box-shadow: 0 4px 0 rgba(0,0,0,.2); text-shadow: none; pointer-events: auto; max-width: min(320px, 92vw); }
+.hud-tip.xp { left: 0; }
+.hud-tip.pop { right: 0; }
+.hud .hud-tip { color: #4a2c12; }
+.hud-tip small { font-weight: 700; color: #b8284a; }
+/* Level-up (número do nível em vermelho) */
+.level-up .lv-num { color: #d7262e; font-size: 1.25em; }
+/* Selo do nível (lote W, A4): arte vermelha com o miolo vazio e o número em vermelho por cima; sem a arte, círculo por CSS. */
+.lv-seal { position: relative; display: inline-grid; place-items: center; width: 96px; height: 96px; margin: 2px auto 0; border-radius: 50%; background: #d7262e; border: 5px solid #f2c230; color: #fff; font-weight: 900; font-size: 40px; }
+.lv-seal.art { background: none; border: 0; border-radius: 0; color: #d7262e; }
+.lv-seal > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lv-seal .seal-txt { position: relative; line-height: 1; text-shadow: 0 2px 0 #fff; }
+.lv-seal.art .seal-txt { font-size: 38px; margin-top: 2px; }
+.share-mega { display: inline-flex; align-items: center; gap: 6px; }
+
+.visit { position: relative; z-index: 4; width: calc(100% - 24px); max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; background: #fff3c4; border: 3px solid var(--gold); border-radius: 14px; padding: 6px 10px; font-size: 14px; }
+.visit > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.steals { font-weight: 800; }
+
+/* A cena ocupa a tela toda; HUD, barra e vizinhos ficam por cima. */
+.scene { position: absolute; inset: 0; touch-action: manipulation; }
+.scene canvas { display: block; }
+
+.neighbors { padding: 0 8px 6px; background: rgba(138,90,43,.9); border-top: 4px solid #6b3f1f; }
+.nb-strip { display: flex; gap: 8px; --hs-pad: 8px; padding-block: 10px 8px; }
+.nb { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; width: 70px; color: #fff; text-decoration: none; font-size: 12px; font-weight: 700; }
+.nb small { opacity: .8; }
+/* Apelido longo não invade o cartão do vizinho: corta com reticências (o nome inteiro fica no title). */
+.nb-name, .nb small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-av { position: relative; width: 44px; height: 44px; border-radius: 12px; background: var(--cream); color: var(--ink); display: grid; place-items: center; font-weight: 900; font-size: 20px; border: 3px solid #fff; }
+.nb.on .nb-av { border-color: var(--gold); }
+.nb-av i { position: absolute; top: -8px; right: -10px; font-style: normal; font-size: 16px; background: var(--gold); border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; border: 2px solid #fff; }
+
+.toast { position: absolute; left: 50%; top: 76px; transform: translateX(-50%); background: var(--green); color: #fff; font-weight: 800; padding: 10px 16px; border-radius: 14px; border: 3px solid #fff; box-shadow: 0 4px 0 rgba(0,0,0,.2); max-width: 90%; text-align: center; z-index: 20; }
+.toast.bad { background: var(--red); }
+.toast-icon { width: 26px; height: 26px; vertical-align: middle; margin-right: 6px; }
+.toast .toast-wa { pointer-events: auto; margin-left: 10px; vertical-align: middle; } /* convite sem menu nativo */
+
+.overlay { position: absolute; inset: 0; background: rgba(40,25,10,.35); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+.close { flex: 0 0 auto; align-self: flex-start; min-width: var(--tap); min-height: var(--tap); margin: -6px -8px 0 0; border: 0; border-radius: 12px; background: none; font-size: 32px; line-height: 1; cursor: pointer; color: var(--wood-dark); padding: 0; }
+.close:hover { background: rgba(138,90,43,.12); }
+.close.small { font-size: 24px; min-width: 36px; min-height: 36px; margin: 0; align-self: center; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #fff; border-radius: 12px; padding: 8px 10px; border: 2px solid #ecd9b4; }
+
+/* ---------- HUD: botões do canto superior direito (Loja, Depósito, Missões, Mural) ---------- */
+.hud { flex-wrap: wrap; }
+.hud-buttons { display: flex; gap: 4px; }
+.hud-btn { position: relative; display: flex; flex-direction: column; align-items: center; background: none; border: 0; cursor: pointer; color: #fff; font-weight: 800; font-size: 11px; text-shadow: 0 1px 0 var(--wood), 0 0 3px var(--wood); padding: 0 2px; text-decoration: none; }
+.hud-btn:hover .icon { transform: translateY(-2px) scale(1.06); }
+.hud-btn em { position: absolute; top: -4px; right: 0; font-style: normal; background: var(--red); color: #fff; border-radius: 99px; padding: 0 6px; font-size: 12px; text-shadow: none; border: 2px solid #fff; }
+.icon { display: inline-block; object-fit: contain; vertical-align: middle; transition: transform .12s; }
+.icon.emoji { display: inline-grid; place-items: center; line-height: 1; }
+@media (max-width: 640px) { .hud-btn span { display: none; } .money { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; } .money span, .money button.pop { min-width: 0; } }
+
+/* ---------- Cursor da ferramenta: vence o cursor que o Pixi põe no canvas ---------- */
+.scene[data-tool] canvas, .scene[data-tool] { cursor: var(--tool-cursor) !important; }
+
+/* ---------- Barra de ferramentas: escura e translúcida, cantos arredondados ---------- */
+.bottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; flex-direction: column; align-items: stretch; pointer-events: none; }
+.bottom > * { pointer-events: auto; }
+.toolbar-wrap { align-self: center; max-width: 100%; }
+.toolbar-tools { display: flex; gap: 4px; padding: 6px 10px; margin: 0 8px 8px; background: rgba(30, 22, 12, .55); border: 2px solid rgba(255,255,255,.35); border-radius: 18px; backdrop-filter: blur(3px); }
+.tool { position: relative; width: 52px; height: 52px; display: grid; place-items: center; border: 2px solid transparent; border-radius: 12px; background: none; cursor: pointer; }
+.tool:hover { background: rgba(255,255,255,.15); }
+.tool.on { background: rgba(255, 220, 120, .35); border-color: var(--gold); }
+.tool .count { position: absolute; bottom: 0; right: 0; font-style: normal; font-weight: 900; font-size: 11px; color: #fff; background: var(--wood); border-radius: 99px; padding: 0 5px; }
+.tool .sub { position: absolute; top: -6px; right: -6px; }
+@media (max-width: 480px) { .tool { width: 44px; height: 44px; } .tool .icon { width: 34px; height: 34px; } }
+.tool-hint { position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: rgba(30,22,12,.7); color: #fff; font-weight: 800; padding: 4px 6px 4px 12px; border-radius: 99px; font-size: 14px; z-index: 5; white-space: nowrap; }
+.neighbors .exit { background: none; border: 0; cursor: pointer; font: inherit; }
+
+/* ---------- Seus pertences: fileira de slots ---------- */
+.bag { position: absolute; left: 50%; bottom: 182px; transform: translateX(-50%); width: min(720px, 96%); background: var(--cream); border: 4px solid var(--wood); border-radius: 18px; padding: 6px 10px 10px; z-index: 6; box-shadow: 0 6px 0 rgba(0,0,0,.15); }
+.bag header { display: flex; justify-content: space-between; align-items: center; color: var(--wood); }
+.bag { --slot-w: 84px; }
+.bag .slots { display: flex; gap: 8px; --hs-pad: 4px; padding-block: 4px; }
+/* Largura fixa; moldura e ícone no alto, nome embaixo (2 linhas, sem nada por cima), contador num selo no canto. */
+.slot { --frame: calc(var(--slot-w) * .78); --ico: calc(var(--slot-w) * .6); position: relative; flex: 0 0 var(--slot-w); width: var(--slot-w); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; padding: 4px 3px 5px; background: url(/art/ui/slot_item.png) center 4px / var(--frame) var(--frame) no-repeat, #fff6df; border: 2px solid #e2c894; border-radius: 14px; cursor: pointer; font-size: 11px; font-weight: 800; color: var(--ink); }
+.slot > .icon { width: var(--ico); height: var(--ico); margin-block: calc((var(--frame) - var(--ico)) / 2); }
+.slot-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; width: 100%; height: 2.4em; line-height: 1.2; text-align: center; overflow-wrap: break-word; hyphens: auto; }
+.slot .qty { position: absolute; top: -1px; right: -1px; min-width: 22px; padding: 0 5px; font-style: normal; font-weight: 900; font-size: 12px; line-height: 17px; text-align: center; color: #fff; background: var(--wood); border: 2px solid #fff; border-radius: 99px; box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.slot.on { border-color: var(--green); box-shadow: 0 0 0 3px rgba(68,199,103,.35); }
+.slot:disabled { opacity: .45; cursor: default; }
+.cell .qty { position: absolute; top: 50px; right: 10px; font-style: normal; font-weight: 900; color: #fff; text-shadow: 0 1px 0 #000, 0 0 3px #000; font-size: 15px; }
+.slot.slot-shop { background: #fff3c4; } /* não "shop": essa classe é a grade da Loja */
+
+/* ---------- Diálogo com moldura de madeira (9-slice 48 px de 384) ---------- */
+.overlay { align-items: center; padding: 10px; }
+.dialog { position: relative; width: min(520px, 100%); max-height: 88%; display: flex; flex-direction: column; border: 28px solid transparent; border-image: url(/art/ui/panel_9slice.png) 48 fill / 28px stretch; background: var(--cream); background-clip: padding-box; filter: drop-shadow(0 6px 0 rgba(0,0,0,.18)); }
+.dialog.wide { width: min(760px, 100%); }
+.dialog-title { display: flex; align-items: center; gap: var(--sp-2); margin: -6px 0 var(--sp-2); }
+.dialog-title h2 { margin: 0; font-size: var(--fs-title); line-height: 1.15; color: var(--wood-dark); }
+.dialog-body { overflow: auto; min-height: 0; padding: 4px 2px; }
+.dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; border-top: 2px dashed #e2c894; margin-top: 8px; font-weight: 800; }
+.wallet { display: inline-flex; gap: 6px; align-items: center; }
+.hs-tabs { margin-bottom: 8px; flex-shrink: 0; }
+.tabs { display: flex; gap: 4px; padding-bottom: 1px; }
+.tab { flex: 0 0 auto; border: 0; cursor: pointer; padding: 10px 16px 8px; font-weight: 800; color: #6b3f1f; background: url(/art/ui/tab.png) center / 100% 100% no-repeat, #f3e2bd; border-radius: 12px 12px 4px 4px; opacity: .7; }
+.tab.on { opacity: 1; color: var(--ink); transform: translateY(1px); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.grid.compact { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.cell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; background: #fff; border: 2px solid #e2c894; border-radius: 14px; cursor: pointer; font: inherit; color: var(--ink); font-size: 13px; }
+.cell.static { cursor: default; }
+.cell.on { border-color: var(--green); box-shadow: 0 0 0 3px rgba(68,199,103,.3); }
+.cell:disabled { opacity: .5; cursor: default; }
+.cell .price { display: inline-flex; gap: 3px; align-items: center; font-weight: 900; }
+.cell .lock { position: absolute; top: 6px; left: 6px; background: var(--wood); color: #fff; font-size: 11px; font-weight: 800; border-radius: 99px; padding: 1px 7px; }
+.btn.green { background: var(--green-btn); color: #fff; border-color: var(--green-btn-edge); box-shadow: 0 3px 0 var(--green-btn-edge), inset 0 2px 0 rgba(255,255,255,.22); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.btn.gold { background: var(--gold); border-color: var(--gold-edge); box-shadow: 0 3px 0 var(--gold-edge); }
+.center { text-align: center; }
+.center.row { display: flex; justify-content: center; gap: 8px; }
+.big { font-size: 20px; font-weight: 800; }
+.small { font-size: 12px; }
+.missions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.missions li { display: flex; align-items: center; gap: 10px; background: #fff; border: 2px solid #e2c894; border-radius: 14px; padding: 8px 10px; }
+.missions li > div { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.missions .bar { max-width: none; }
+.missions .bar i { background: var(--green); }
+.missions li.done { opacity: .7; background: #f6f1e6; }
+.missions li.ready { background: #ecfbec; border-color: #9fd8a8; }
+.missions .ok { font-size: 24px; color: var(--green); font-weight: 900; }
+.streak { list-style: none; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0; }
+.streak li { display: flex; flex-direction: column; align-items: center; background: #fff; border: 2px solid #e2c894; border-radius: 10px; padding: 4px 0; font-size: 12px; }
+.streak li.past { opacity: .5; }
+.streak li.today { border-color: var(--green); background: #e7ffe9; transform: scale(1.06); }
+
+/* ---------- Balão do lote ---------- */
+.plot-tip { position: fixed; z-index: 30; pointer-events: none; display: flex; flex-direction: column; gap: 3px; min-width: 170px; max-width: 240px; background: rgba(255,255,255,.94); border: 2px solid var(--wood); border-radius: 10px; padding: 6px 9px; font-size: 12px; color: var(--ink); box-shadow: 0 3px 0 rgba(0,0,0,.15); }
+.plot-tip b { color: #c0392b; font-size: 13px; }
+.tip-row { display: flex; align-items: center; gap: 6px; }
+.plot-tip .bar { flex: 1; height: 8px; }
+.plot-tip .bar i { background: var(--green); }
+.plot-tip .bar.health i { background: #ff7a7a; }
+.tip-care { display: flex; gap: 8px; font-weight: 800; }
+
+/* ---------- Números flutuantes ---------- */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+.fx { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 20px; color: #fff; white-space: nowrap; animation: fx-up 1.3s ease-out forwards; text-shadow: 0 2px 0 rgba(0,0,0,.35), 0 0 3px rgba(0,0,0,.4); }
+.fx.xp { color: #ff6fa8; }
+.fx.gold { color: #ffd23f; }
+.fx.item { color: #9ff07a; font-size: 16px; }
+.fx.bad { color: #ff5a5f; }
+@keyframes fx-up { from { opacity: 0; margin-top: 0; } 15% { opacity: 1; } to { opacity: 0; margin-top: -70px; } }
+
+.hud-emoji { font-size: 28px; line-height: 34px; text-shadow: none; }
+
+/* ---------- Amigos ---------- */
+.invite { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #e7ffe9; border: 2px solid var(--green); border-radius: 14px; padding: 8px 10px; margin-bottom: 10px; }
+.invite-text { flex: 1; min-width: 200px; display: flex; flex-direction: column; font-size: 13px; }
+.row { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ranking { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ranking li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 2px solid #e2c894; border-radius: 12px; padding: 6px 8px; }
+.ranking li.me { background: #fff3c4; border-color: var(--gold); }
+.pos { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #fff; background: #b7a07a; }
+/* Selos de posição: 1 vermelho, 2 laranja, 3 verde, 4+ azul-claro */
+.pos { background: #3b8fc4; border: 2px solid #fff; box-shadow: 0 1px 0 rgba(0,0,0,.25); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.pos.p1 { background: #d7262e; } .pos.p2 { background: #e2700d; } .pos.p3 { background: #2c9a3c; }
+/* Selos 1/2/3 da arte (lote W, A5): o algarismo já vem desenhado; o texto fica só para leitor de tela. */
+.pos.art { position: relative; width: 32px; height: 32px; background: none; border: 0; box-shadow: none; border-radius: 0; }
+.pos.art > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pos.art .seal-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.nb-av.small { width: 34px; height: 34px; font-size: 16px; border-width: 2px; }
+/* Rostos do fazendeiro (lote Q, A9): a imagem ocupa o círculo/quadrado da inicial. */
+.av-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; background: var(--cream); }
+.avatar .av-img { border-radius: 50%; }
+.nb-av .av-img { border-radius: 9px; }
+.avatar-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; justify-items: center; }
+.avatar-opt { width: 64px; height: 64px; padding: 2px; border-radius: 50%; border: 3px solid transparent; background: var(--cream); cursor: pointer; }
+.avatar-opt img { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.avatar-opt.on { border-color: var(--gold); box-shadow: 0 0 0 3px #fff, 0 2px 0 3px var(--wood); }
+.avatar-opt:focus-visible { outline: 3px solid var(--wood); outline-offset: 2px; }
+.cell .renda { font-size: 11px; font-weight: 700; color: #6b4a22; }
+.rk-name { flex: 1; display: flex; flex-direction: column; min-width: 120px; }
+.rk-flags { display: flex; gap: 8px; font-weight: 800; font-size: 13px; }
+.add-friend { display: flex; gap: 6px; margin-top: 10px; }
+.add-friend input { flex: 1; font: inherit; font-weight: 700; border: 2px solid var(--wood); border-radius: 10px; padding: 4px 8px; }
+.linkish { background: none; border: 0; color: #2e6fb7; text-decoration: underline; cursor: pointer; font: inherit; padding: 0 3px; }
+.online { position: absolute; bottom: -3px; left: -3px; width: 12px; height: 12px; border-radius: 50%; background: #2ecc71; border: 2px solid #fff; }
+.nb-av i.help { background: #ff8a8a; }
+
+/* =================== Celular: UX de app =================== */
+/* Jogo, não documento: sem seleção de texto, sem destaque azul de toque, sem menu de toque longo. */
+.game { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+.game input { -webkit-user-select: text; user-select: text; }
+.tabbar { display: none; }
+.menu-list { display: flex; flex-direction: column; gap: 8px; }
+.menu-list .btn { justify-content: flex-start; min-height: 48px; font-size: 16px; }
+.sound-controls { display: flex; flex-direction: column; gap: 8px; }
+.sound-row { display: flex; align-items: center; gap: 10px; }
+.sound-row .btn { flex: 0 0 132px; }
+.sound-row input[type=range] { flex: 1; accent-color: var(--green); min-height: 32px; }
+.sound-row input[type=range]:disabled { opacity: .4; }
+.tab-emoji { font-size: 24px; line-height: 30px; }
+
+@media (max-width: 760px), (max-height: 500px), (pointer: coarse) and (max-width: 1100px) {
+  .game { --tabbar-h: calc(60px + env(safe-area-inset-bottom)); --bottom-h: calc(var(--tabbar-h) + 66px); }
+
+  /* HUD compacta, abaixo do notch */
+  .hud { padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left)); gap: 8px; }
+  .hud-buttons { display: none; }
+  .avatar { width: 40px; height: 40px; font-size: 18px; }
+  .who strong { font-size: 14px; }
+  .bar { max-width: 110px; }
+  .money { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 52%; }
+  .money span { min-width: 0; padding: 2px 8px; font-size: 14px; }
+  .visit { width: calc(100% - 16px); padding: 4px 8px; font-size: 12px; gap: 4px; }
+
+  /* Vizinhos saem do rodapé (ficam na aba Amigos); entra a barra de abas */
+  .neighbors { display: none; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr); height: var(--tabbar-h); padding: 4px max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left));
+    background: linear-gradient(#9a6838, #7d5229); border-top: 3px solid #5e3a19; box-shadow: 0 -4px 12px rgba(0,0,0,.18);
+  }
+  .tabbar > * { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border: 0; background: none; color: #fff; font: inherit; font-size: 11px; font-weight: 800; text-decoration: none; text-shadow: 0 1px 0 rgba(0,0,0,.35); border-radius: 12px; }
+  .tabbar > *:active { background: rgba(255,255,255,.15); transform: scale(.96); }
+  .tabbar em { position: absolute; top: 2px; right: calc(50% - 26px); font-style: normal; background: var(--red); color: #fff; border-radius: 99px; padding: 0 6px; font-size: 11px; border: 2px solid #fff; }
+
+  /* Ferramentas: pílula rolável logo acima das abas, botões de 48 px */
+  .toolbar-tools { max-width: calc(100vw - 16px); overflow-x: auto; scrollbar-width: none; margin: 0 8px 6px; padding: 4px 6px; gap: 2px; }
+  .toolbar-tools::-webkit-scrollbar { display: none; }
+  .tool { flex: 0 0 48px; width: 48px; height: 48px; }
+  .tool .icon { width: 36px; height: 36px; }
+
+  /* Pelo menos 4 itens inteiros e meio cortado (a pista de que rola): faixa = 100vw − 44 px, 6 px entre itens. */
+  .bag { bottom: calc(var(--bottom-h) + 6px); width: calc(100% - 16px); --slot-w: clamp(56px, calc((100vw - 68px) / 4.5), 84px); }
+  .bag .slots { gap: 6px; }
+  .tool-hint { bottom: calc(var(--bottom-h) + 6px); font-size: 13px; }
+  .toast { top: calc(env(safe-area-inset-top) + 64px); font-size: 14px; }
+
+  /* Janelas viram "bottom sheet": sobem de baixo, largura toda, alça para fechar arrastando */
+  .overlay { align-items: flex-end; padding: 0; }
+  .dialog, .dialog.wide {
+    width: 100%; max-height: 88dvh; border-width: 22px 14px 0; border-image: url(/art/ui/panel_9slice.png) 48 fill / 22px 14px 0 stretch;
+    padding-bottom: max(12px, env(safe-area-inset-bottom)); animation: sheet-up .22s ease-out;
+  }
+  .dialog::before { content: ''; display: block; width: 44px; height: 5px; border-radius: 99px; background: #d9c39a; margin: -8px auto 6px; }
+  .dialog-title h2 { font-size: 20px; }
+  .close { min-width: 44px; min-height: 44px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .btn { min-height: 44px; }
+  .btn.small { min-height: 40px; }
+  .tab { padding: 10px 14px 8px; }
+
+  /* Balão do lote fixo acima das ferramentas: o dedo não cobre */
+  .plot-tip { left: 50% !important; top: auto !important; bottom: calc(var(--bottom-h) + 8px); transform: translateX(-50%); max-width: 92vw; font-size: 13px; }
+  /* Com Seus pertences aberto, a dica do lote (presa embaixo no celular) cobria as sementes; a sacola já diz o que fazer. */
+  .game:has(.bag) .plot-tip { display: none; }
+  .fx { font-size: 22px; }
+}
+
+/* Celular deitado: pouca altura, abas sem texto e mais baixas */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game { --tabbar-h: calc(46px + env(safe-area-inset-bottom)); --bottom-h: calc(var(--tabbar-h) + 58px); }
+  .tabbar > * { min-height: 40px; }
+  .tabbar span:not(.tab-emoji) { display: none; }
+  .dialog, .dialog.wide { max-height: 96dvh; }
+  .hud { padding-top: max(4px, env(safe-area-inset-top)); }
+}
+
+@keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dialog { animation: none; } .fx { animation-duration: .01s; } }
+
+/* Anel de toque: retorno do clique (no celular, onde não há cursor, é o único retorno imediato) */
+.tap-ring { position: fixed; z-index: 35; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 3px solid rgba(255,255,255,.95); border-radius: 50%; pointer-events: none; animation: tap-ring .45s ease-out forwards; box-shadow: 0 0 0 2px rgba(59,42,26,.25); }
+@keyframes tap-ring { from { transform: scale(.4); opacity: 1; } to { transform: scale(2.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tap-ring { animation-duration: .01s; } }
+
+/* Tela de fazenda (convite, entrada, link mágico, cadastro, conta excluída): a arte leve da tela de carregamento,
+   sem montar a cena Pixi; logo, pílula, painel de madeira e botão amarelo. */
+.farm-screen { position: relative; isolation: isolate; min-height: 100dvh; overflow: hidden; background: #7cc8ff; }
+.farm-screen-backdrop { position: absolute; inset: 0; z-index: -1; background: url(/art/ui/loading_farm.jpg) 42% center / cover no-repeat; }
+.farm-screen-backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(25,78,125,.10) 0%, rgba(28,67,41,.08) 28%, rgba(32,48,24,.34) 100%); }
+.farm-screen-content { width: min(100%, 520px); min-height: 100dvh; margin: auto; padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.farm-screen-hero { width: 100%; text-align: center; }
+.farm-screen-hero p { display: inline-block; margin: -3px 0 2px; padding: 7px 18px; color: #fffdf1; font-size: 17px; font-weight: 900; text-shadow: 0 2px 2px #563613, 0 0 8px #563613; background: rgba(76,48,23,.48); border-radius: 999px; }
+.farm-panel { width: 100%; border: 24px solid transparent; border-image: url(/art/ui/panel_9slice.png) 48 fill / 24px stretch; background: #fff8e7; background-clip: padding-box; filter: drop-shadow(0 7px 0 rgba(65,43,22,.38)); padding: 2px 6px 5px; text-align: left; }
+.farm-cta { display: flex; align-items: center; justify-content: center; gap: 7px; width: min(100%, 390px); min-height: 64px; margin-top: 3px; padding: 9px 18px; border: 4px solid #6d3d17; border-radius: 19px; background: linear-gradient(#fff280 0%, #ffd943 46%, #f6af1d 100%); box-shadow: inset 0 3px 0 rgba(255,255,255,.7), 0 7px 0 #773f18, 0 10px 14px rgba(30,25,10,.28); color: #4b2b0d; text-decoration: none; text-align: center; text-shadow: 0 1px 0 rgba(255,255,255,.55); font-size: 23px; font-weight: 950; line-height: 1.08; transition: transform .1s, box-shadow .1s; }
+.farm-cta span { font-size: 31px; line-height: 0; margin-top: -3px; }
+.farm-cta:active { transform: translateY(6px); box-shadow: inset 0 3px 0 rgba(255,255,255,.6), 0 1px 0 #773f18, 0 3px 6px rgba(30,25,10,.28); }
+.farm-footnote { color: #fffdf1; font-size: 13px; font-weight: 800; text-align: center; text-shadow: 0 2px 3px #3b2a1a, 0 0 6px #3b2a1a; }
+/* Logo do jogo (GameLogo): hero na entrada e no convite, compact nas telas de passagem. */
+.game-logo { margin: 0 auto; width: min(100%, 440px); line-height: 0; filter: drop-shadow(0 5px 0 rgba(57,38,20,.32)); }
+.game-logo.compact { width: min(72%, 260px); filter: drop-shadow(0 4px 0 rgba(57,38,20,.32)); }
+.game-logo img { display: block; width: 100%; height: auto; }
+/* Outro NEXT_PUBLIC_GAME_NAME: o nome em letreiro de texto (verde com contorno marrom, como a arte). */
+.game-logo-text { display: block; padding: 6px 0; color: #9be34a; font-size: clamp(40px, 13vw, 64px); font-weight: 950; line-height: 1.02; letter-spacing: .5px; overflow-wrap: anywhere; -webkit-text-stroke: 2px #5a3412; paint-order: stroke fill; text-shadow: 0 4px 0 #5a3412, 0 6px 8px rgba(40,25,10,.35); }
+.game-logo.compact .game-logo-text { font-size: clamp(30px, 9vw, 42px); }
+
+/* Convite */
+.invite-person { display: flex; align-items: center; gap: 13px; }
+.invite-avatar { flex: 0 0 auto; display: block; width: 68px; height: 68px; overflow: hidden; border: 3px solid #f5d277; border-radius: 50%; background: #fff; box-shadow: 0 2px 0 #805224; }
+.invite-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.invite-person > div { min-width: 0; }
+.invite-eyebrow { color: #8c541c; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.invite-person p { margin: 2px 0 3px; font-size: 19px; font-weight: 750; line-height: 1.16; }
+.invite-person b { color: #256f27; overflow-wrap: anywhere; }
+.invite-level { display: inline-block; padding: 2px 9px; border-radius: 999px; background: #e4f4ba; color: #42651c; font-size: 12px; font-weight: 900; }
+.invite-divider { height: 2px; margin: 13px 0 11px; background: #dfc899; box-shadow: 0 1px 0 #fff; }
+.invite-perks { display: grid; gap: 7px; list-style: none; padding: 0; margin: 0; font-size: 15px; line-height: 1.22; }
+.invite-perks li { display: flex; align-items: center; gap: 9px; min-height: 40px; }
+.invite-perks img { flex: 0 0 auto; width: 39px; height: 39px; object-fit: contain; }
+.invite-perks b { color: #7b4b12; }
+.invite-missing { font-size: 18px; line-height: 1.35; margin: 8px 0; text-align: center; font-weight: 800; }
+
+/* Entrada (/, /entrar, /bem-vindo, /conta/excluida): formulário dentro do painel de madeira. */
+.entry-panel { text-align: center; }
+.entry-panel .invite-person { text-align: left; }
+.entry-panel .invite-perks { margin-top: 10px; text-align: left; }
+.entry-title { margin: 0 0 4px; color: #256f27; font-size: 25px; font-weight: 950; line-height: 1.1; }
+.entry-text { margin: 2px 0 12px; font-size: 17px; font-weight: 700; line-height: 1.35; }
+.entry-hint { display: block; margin-top: 10px; color: var(--ink-soft); font-size: 14px; font-weight: 700; line-height: 1.3; }
+.farm-panel .login-form { width: 100%; gap: 12px; }
+.farm-panel .login-form input:not([type=checkbox]), .farm-panel .login-form select { width: 100%; min-height: 54px; border: 3px solid #b98546; border-radius: 15px; background: #fffdf6; color: var(--ink); box-shadow: inset 0 3px 0 rgba(120,80,30,.12); }
+.farm-panel .login-form input::placeholder { color: #a88d6a; }
+.farm-panel .login-form input:focus { border-color: #6d3d17; outline: none; box-shadow: inset 0 3px 0 rgba(120,80,30,.12), 0 0 0 3px rgba(255,201,60,.75); }
+.farm-panel .btn.big { min-height: 58px; width: 100%; margin-top: 2px; justify-content: center; border: 4px solid #6d3d17; border-radius: 17px; background: linear-gradient(#fff280 0%, #ffd943 46%, #f6af1d 100%); box-shadow: inset 0 3px 0 rgba(255,255,255,.7), 0 6px 0 #773f18; color: #4b2b0d; text-shadow: 0 1px 0 rgba(255,255,255,.55); font-size: 21px; font-weight: 950; transition: transform .1s, box-shadow .1s; }
+.farm-panel .btn.big:active { transform: translateY(5px); box-shadow: inset 0 3px 0 rgba(255,255,255,.6), 0 1px 0 #773f18; }
+.farm-panel .btn.big.danger { background: linear-gradient(#ff8a7e, #e2483f); color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.farm-panel .btn.big:disabled { opacity: .6; }
+.farm-panel .sent-note { max-width: none; background: #fff3c4; border-color: #e2c894; text-align: left; }
+.farm-panel .sent-note b { overflow-wrap: anywhere; }
+.farm-panel .terms-links { margin: -6px 0 2px; text-align: left; }
+.farm-panel .terms-links a { padding-block: 12px; color: #1f5f9e; }
+.farm-panel .signup-form { width: 100%; }
+.farm-panel .signup-form .field input { text-align: left; }
+.farm-panel .check { min-height: 44px; align-items: center; text-align: left; }
+.farm-screen .test-login { width: min(100%, 390px); padding: 0 12px; background: rgba(255,248,231,.9); border: 2px solid #b98546; border-radius: 15px; text-align: center; }
+.farm-screen .test-login summary { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.farm-screen .test-login[open] { padding-bottom: 12px; }
+.farm-screen .test-login .login-form { width: 100%; margin-top: 0; }
+.farm-screen .test-login input { min-height: 48px; }
+.farm-screen .legal-links { opacity: 1; color: #fffdf1; font-weight: 800; text-shadow: 0 2px 3px #3b2a1a, 0 0 6px #3b2a1a; }
+.farm-screen .legal-links a { display: inline-block; padding: 12px 6px; }
+
+@media (max-width: 380px), (max-height: 760px) {
+  .farm-screen-content { padding-inline: max(14px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-right)); gap: 9px; }
+  .game-logo.hero { width: min(100%, 342px); }
+  .farm-screen-hero p { font-size: 15px; padding: 5px 13px; }
+  .farm-panel { border-width: 19px; border-image-width: 19px; padding: 0 3px 2px; }
+  .invite-avatar { width: 58px; height: 58px; }
+  .invite-person p { font-size: 17px; }
+  .invite-divider { margin: 9px 0 7px; }
+  .invite-perks { gap: 4px; font-size: 14px; }
+  .invite-perks li { min-height: 36px; }
+  .invite-perks img { width: 34px; height: 34px; }
+  .farm-cta { min-height: 58px; font-size: 21px; }
+  .entry-title { font-size: 22px; }
+  .entry-text { font-size: 16px; margin-bottom: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .farm-cta, .farm-panel .btn.big { transition: none; } }
+
+/* Vitrine da entrada: contador, "Fazendas em destaque" e a prévia só para olhar (components/Vitrine.tsx).
+   Fica abaixo do formulário (ao lado, no desktop): carregar ou atualizar nunca empurra o login. */
+.entry-col { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.farm-screen-hero .online-now { display: flex; width: fit-content; align-items: center; gap: 8px; margin: 8px auto 0; padding: 5px 14px; font-size: 15px; white-space: nowrap; }
+.online-dot { width: 11px; height: 11px; flex: none; border-radius: 50%; background: #46d34c; box-shadow: 0 0 0 2px #fffdf1, 0 0 8px #46d34c; }
+.featured { text-align: left; }
+.featured h2 { margin: 0 0 8px; color: var(--wood-dark); font-size: 21px; font-weight: 950; text-align: center; }
+.featured-tabs { display: flex; justify-content: center; gap: 4px; border-bottom: 3px solid #e2c894; margin-bottom: 8px; }
+.featured-tabs .tab { padding: 8px 12px 6px; font-size: 15px; }
+.featured-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.featured-row { width: 100%; min-height: 46px; display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 6px; border: 2px solid #e2c894; border-radius: 12px; background: #fff; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.featured-row:hover, .featured-row:focus-visible { border-color: var(--gold); background: #fff8dc; }
+.featured-row .pos { flex: none; }
+.featured-av { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #f3e2bd; }
+.featured-initials { min-width: 2.8em; font-size: 17px; letter-spacing: .5px; }
+.featured-lv { flex: none; padding: 1px 7px; border-radius: 999px; background: #e6f4d4; color: #2d6a1f; font-size: 13px; font-weight: 900; }
+.featured-val { flex: 1; min-width: 0; text-align: right; font-weight: 800; font-size: 14px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.featured-eye { flex: none; font-size: 16px; }
+.featured-empty { margin: 6px 0; text-align: center; font-weight: 800; color: var(--ink-soft); }
+.featured-note { display: block; margin-top: 8px; text-align: center; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+/* Fazenda em destaque em tela cheia (/espiar/[token]): a cena como em /fazenda e só a HUD mínima por cima. */
+.peek-screen { position: fixed; inset: 0; height: auto; }
+.peek-hud { position: absolute; inset: 0 0 auto; padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left)); justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; }
+.peek-who { flex: 0 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 6px 12px; border-radius: 14px; background: rgba(40,25,10,.55); }
+.peek-who strong { font-size: 17px; font-weight: 900; }
+.peek-close { margin-left: auto; flex: none; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; border: 3px solid #fff; background: var(--wood); color: #fff; font-size: 22px; font-weight: 900; line-height: 1; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.peek-close:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+/* Só a câmera anda (FarmScene.objectInput = false): sem cursor de mão nem seleção; o gesto no canvas não rola a página. */
+.peek-scene, .peek-scene * { cursor: default !important; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.peek-scene { position: absolute; inset: 0; }
+.peek-wait { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; align-content: center; gap: 14px; margin: 0; padding: 24px; text-align: center; font-size: 18px; font-weight: 900; color: #fffdf1; text-shadow: 0 2px 2px #3b2a1a; pointer-events: none; }
+.peek-wait p { margin: 0; }
+.peek-gone { pointer-events: auto; }
+.peek-badge { position: absolute; z-index: 4; left: 50%; top: calc(76px + env(safe-area-inset-top)); transform: translateX(-50%); white-space: nowrap; padding: 5px 14px; border-radius: 999px; background: rgba(40,25,10,.65); color: #fff; font-size: 14px; font-weight: 900; pointer-events: none; animation: peek-badge-in .25s ease-out; }
+@keyframes peek-badge-in { from { opacity: 0; transform: translate(-50%, -6px); } }
+/* A sombra também evita um bug do Chromium com composição por software: a faixa opaca embaixo apagava a mesma
+   altura no topo do canvas WebGL (sem o céu). */
+.peek-bar { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 8px 16px; flex-wrap: wrap; padding: 10px calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); background: var(--cream); border-top: 3px solid var(--wood); box-shadow: 0 -2px 6px rgba(0,0,0,.15); color: #4a2c12; font-weight: 800; font-size: 14px; text-align: center; }
+.peek-bar .btn.big { width: min(100%, 360px); justify-content: center; }
+@media (min-width: 720px) { .peek-bar .btn.big { width: auto; } }
+@media (max-width: 440px) { .featured-eye { display: none; } }
+@media (max-width: 380px) {
+  .featured-row { gap: 6px; padding-inline: 4px 6px; }
+  .featured-av { width: 30px; height: 30px; }
+  .featured-lv { font-size: 12px; padding-inline: 5px; }
+  .featured-val { font-size: 13px; }
+}
+@media (min-width: 1000px) {
+  .farm-screen-content { width: min(100%, 1040px); display: grid; grid-template-columns: minmax(0, 500px) minmax(0, 440px); grid-template-areas: 'hero hero' 'entry featured' 'legal legal'; justify-content: center; align-content: center; justify-items: center; column-gap: 32px; }
+  .farm-screen-hero { grid-area: hero; }
+  .entry-col { grid-area: entry; align-self: start; }
+  .featured { grid-area: featured; align-self: start; }
+  .farm-screen .legal-links { grid-area: legal; }
+}
+
+/* Gancho de compartilhamento: cartão discreto acima das ferramentas */
+.share-hook { position: absolute; left: 50%; bottom: calc(var(--bottom-h, 140px) + 64px); transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--cream); border: 3px solid var(--wood); border-radius: 16px; padding: 8px 10px 8px 14px; box-shadow: 0 6px 0 rgba(0,0,0,.15); max-width: 94vw; animation: sheet-up .22s ease-out; }
+
+/* Tutorial (Seu Zé): balão acima das ferramentas; o botão do próximo passo pulsa */
+.coach { position: absolute; left: 50%; bottom: calc(var(--bottom-h, 140px) + 64px); transform: translateX(-50%); z-index: 7; width: min(440px, 94vw); display: flex; gap: 10px; align-items: flex-start; background: var(--cream); border: 3px solid var(--wood); border-radius: 18px; padding: 10px 12px; box-shadow: 0 6px 0 rgba(0,0,0,.15); animation: sheet-up .22s ease-out; }
+.coach-face { font-size: 34px; line-height: 1; }
+.coach-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.coach-body p { margin: 0; font-size: 15px; font-weight: 700; }
+.coach-body small { color: var(--wood); font-weight: 800; }
+.coach-pulse { animation: coach-pulse 1.2s ease-in-out infinite; }
+@keyframes coach-pulse { 0%, 100% { transform: scale(1); filter: none; } 50% { transform: scale(1.12); filter: drop-shadow(0 0 6px #ffe14d); } }
+@media (min-width: 761px) and (min-height: 501px) { .coach, .share-hook { bottom: 170px; } }
+/* Com Seus pertences aberto, o Seu Zé sobe para o alto da tela: no lugar de sempre ele cobria as sementes (o Nabo do passo 1). */
+.game:has(.bag) .coach { top: 96px; bottom: auto; }
+@media (prefers-reduced-motion: reduce) { .coach-pulse { animation: none; outline: 3px solid #ffe14d; border-radius: 12px; } }
+
+.push-ask { flex-direction: column; align-items: stretch; text-align: center; max-width: min(420px, 94vw); bottom: calc(var(--bottom-h, 140px) + 150px); }
+@media (min-width: 761px) and (min-height: 501px) { .push-ask { bottom: 260px; } }
+
+/* Mais vida nos selos da interface (respeita "reduzir movimento") */
+@keyframes wiggle { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(-14deg); } 95% { transform: rotate(12deg); } }
+@keyframes pop { 0%, 80%, 100% { transform: scale(1); } 88% { transform: scale(1.25); } }
+.nb-av i { animation: wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+.hud-btn em, .tabbar em, .btn em { animation: pop 3s ease-in-out infinite; }
+.tool.on .icon { animation: pop 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nb-av i, .hud-btn em, .tabbar em, .btn em, .tool.on .icon { animation: none; } }
+
+/* Cachorro: risco legível na visita e ficha na janela */
+.dog-risk { border: 2px solid #b9a37c; background: #f3ead6; border-radius: 99px; padding: 3px 10px; font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; color: var(--ink); }
+.dog-risk.awake { background: #ffe3e0; border-color: #e0695f; color: #9b2a22; animation: alert-glow 1.8s ease-in-out infinite; }
+@keyframes alert-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(224,105,95,0); } 50% { box-shadow: 0 0 0 4px rgba(224,105,95,.35); } }
+@media (prefers-reduced-motion: reduce) { .dog-risk.awake { animation: none; } }
+
+/* Frutinha subindo ao colher e ao pegar do amigo (FruitFx.tsx). */
+.fruit-layer { position: fixed; inset: 0; pointer-events: none; z-index: 41; }
+.fruit { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 2px; will-change: transform, opacity; transform-origin: 28px 28px; }
+.fruit-icon { position: relative; width: 56px; height: 56px; flex: none; overflow: visible; }
+.fruit b { position: relative; z-index: 1; margin-left: 8px; color: #e5262b; font-size: 24px; font-weight: 900; white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 2px 0 #fff, 0 0 6px #fff; }
+
+/* Tela de carregamento da visita (VisitLoading.tsx): três brotos nascendo, tudo em CSS. */
+.visit-loading { display: grid; place-items: center; align-content: end; gap: 18px; height: 100%; padding: 24px 24px 10vh; text-align: center; color: #fff; font-weight: 800; font-size: 18px; text-shadow: 0 2px 0 var(--wood); }
+.visit-loading p { max-width: 420px; margin: 0; }
+.vl-field { display: flex; gap: 26px; align-items: flex-end; padding: 0 22px 10px; border-bottom: 14px solid #8a5a2b; border-radius: 0 0 40% 40% / 0 0 30% 30%; height: 70px; }
+.vl-sprout { position: relative; width: 6px; height: 50px; background: #3f9e3a; border-radius: 3px; transform-origin: bottom; animation: vl-grow 1.8s ease-in-out infinite; }
+.vl-leaf { position: absolute; top: 4px; width: 22px; height: 12px; background: #5fbf3a; border-radius: 0 100% 0 100%; }
+.vl-leaf.l { right: 4px; transform: rotate(-20deg); border-radius: 100% 0 100% 0; }
+.vl-leaf.r { left: 4px; transform: rotate(20deg); }
+@keyframes vl-grow { 0% { transform: scaleY(0); opacity: 0; } 35%, 75% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vl-sprout { animation: none; } }
+
+/* Faixa de vizinhos: amigo com horta madura chama atenção (o "plantão de roubo"). */
+.nb.ripe .nb-av { border-color: var(--gold); animation: ripe-glow 1.4s ease-in-out infinite; }
+.nb.ripe .nb-av i { width: 28px; height: 28px; font-size: 18px; top: -11px; right: -12px; animation: ripe-hand 1.4s ease-in-out infinite; }
+.nb .ripe-tag { opacity: 1; color: #ffe14d; text-shadow: 0 1px 0 rgba(0,0,0,.45); }
+@keyframes ripe-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,210,63,.0); transform: translateY(0); } 50% { box-shadow: 0 0 0 5px rgba(255,210,63,.65), 0 0 14px 4px rgba(255,210,63,.55); transform: translateY(-3px); } }
+@keyframes ripe-hand { 0%, 100% { transform: rotate(0) scale(1); } 25% { transform: rotate(-18deg) scale(1.15); } 50% { transform: rotate(14deg) scale(1.2); } 75% { transform: rotate(-8deg) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .nb.ripe .nb-av, .nb.ripe .nb-av i { animation: none; } .nb.ripe .nb-av { box-shadow: 0 0 0 4px rgba(255,210,63,.8); } }
+
+
+/* Tooltip da sacola (fora da fileira que rola, para não ser cortado). */
+.bag-tip { position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); z-index: 7; min-width: 170px; max-width: 260px; display: flex; flex-direction: column; gap: 1px; background: #fffdf3; color: var(--ink); border: 2px solid var(--wood); border-radius: 10px; padding: 6px 9px; font-size: 12px; box-shadow: 0 3px 0 rgba(0,0,0,.15); pointer-events: none; }
+.bag-tip::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: var(--wood); }
+
+/* Missões e bônus: "Receber e compartilhar". */
+.missions .claim { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.bonus-seed .icon { vertical-align: middle; }
+
+/* Amigos da Fazenda: busca. */
+.friend-find { margin: 10px 0 6px; }
+.friend-find input { width: 100%; box-sizing: border-box; font: inherit; font-weight: 700; border: 2px solid var(--wood); border-radius: 10px; padding: 5px 9px; }
+
+/* Fertilizante do Amor na barra de visita. */
+/* Barra de visita com 8 ferramentas: no celular estreito cabe toda (a mão de pegar não pode ficar escondida). */
+@media (max-width: 430px) {
+  .toolbar-tools:has(> :nth-child(8)) .tool { flex: 0 0 42px; width: 42px; height: 42px; }
+  .toolbar-tools:has(> :nth-child(8)) .tool .icon { width: 32px; height: 32px; }
+}
+
+/* ---------- Frente C: presentes, venda detalhada, zoom ---------- */
+.gift-seeds { display: flex; gap: 8px; --hs-pad: 3px; padding-block: 3px 8px; margin-bottom: 6px; }
+.gift-seeds .cell { flex: 0 0 92px; }
+.gift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gift-list li { display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #e2c894; border-radius: 12px; padding: 6px 8px; }
+.gift-list li.on { background: #fff3c4; border-color: var(--gold); }
+.gift-list .rk-name { min-width: 0; }
+.gift-list .rk-name b { overflow: hidden; text-overflow: ellipsis; }
+.gift-list li > .btn, .gift-list li > .ok { flex: 0 0 auto; }
+.ok.small { color: var(--green); font-weight: 900; font-size: 13px; white-space: nowrap; }
+.sale-confirm, .sale-result { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.sale-lines { list-style: none; margin: 0 auto; padding: 0; display: flex; flex-direction: column; gap: 4px; width: min(100%, 360px); }
+.sale-lines li { display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #e2c894; border-radius: 10px; padding: 3px 8px; }
+.sale-lines li span { flex: 1; font-weight: 700; }
+.sale-sum { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0 auto; width: min(100%, 360px); font-weight: 700; }
+.sale-sum dd { margin: 0; text-align: right; white-space: nowrap; }
+.sale-sum .total { font-weight: 900; font-size: 18px; border-top: 2px dashed #e2c894; padding-top: 4px; }
+.sale-sum .icon, .sale-confirm .icon, .sale-lines .icon { vertical-align: -3px; }
+.menu-list .btn em { margin-left: auto; }
+.zoom-ctl { position: absolute; right: 12px; bottom: calc(100% + 8px); display: flex; flex-direction: column; gap: 6px; }
+.zoom-btn { width: 40px; height: 40px; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); background: rgba(30, 22, 12, .55); color: #fff; font: inherit; font-size: 26px; font-weight: 900; line-height: 1; cursor: pointer; backdrop-filter: blur(3px); display: grid; place-items: center; }
+.zoom-btn:hover { background: rgba(30, 22, 12, .7); }
+.zoom-btn:active { transform: scale(.94); }
+/* Celular estreito: as 4 abas da Loja cabem sem cortar "Animais". */
+@media (max-width: 420px) { .tab { padding: 9px 9px 7px; font-size: 14px; } }
+/* Nível do cachorro por ossos */
+.bones { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 12px; }
+.bones .bar { flex: none; width: 100%; max-width: 260px; height: 12px; }
+.bones .bar i { background: #c9a36b; }
+.fruit-icon.product img, .fruit-icon.product .icon { position: static; width: 56px; height: 56px; }
+.fruit-icon.product .emoji { display: inline-flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+.wardrobe { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 10px 0 0; }
+
+/* Conta por e-mail (entrar, primeiro acesso, minha conta, páginas legais) */
+.btn.danger { background: var(--red); color: #fff; }
+.linklike { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
+.linklike.small { font-size: 13px; align-self: flex-start; opacity: .8; }
+.small { font-size: 13px; }
+.code-input { letter-spacing: 10px; font-family: ui-monospace, 'SF Mono', monospace; font-weight: 900; font-size: 30px !important; }
+.sent-note { background: var(--cream); border: 2px solid var(--wood); border-radius: 14px; padding: 8px 12px; margin: 0; max-width: 360px; }
+.login-form select { font: inherit; font-size: 18px; padding: 10px; border-radius: 14px; border: 3px solid var(--wood); background: #fff; }
+.signup-form { width: min(360px, 100%); text-align: left; }
+.signup-form .field { display: flex; flex-direction: column; gap: 4px; font-weight: 800; }
+.signup-form .field input { text-align: left; font-size: 18px; }
+.signup-form .field small { font-weight: 400; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.35; }
+.check input { width: 22px; height: 22px; flex: none; margin: 0; }
+.test-login { width: min(320px, 100%); background: rgba(255,255,255,.5); border-radius: 14px; padding: 6px 10px; font-size: 14px; }
+.test-login summary { cursor: pointer; font-weight: 700; }
+.test-login .login-form { margin-top: 8px; }
+.legal-links { font-size: 13px; opacity: .8; }
+.legal-links a { color: inherit; }
+.legal-links { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.legal-company { font-size: 11px; font-weight: 600; opacity: .85; }
+.legal .legal-links { margin-top: 18px; }
+.login { overflow-y: auto; }
+.account-page { justify-content: flex-start; }
+.account { display: flex; flex-direction: column; gap: 12px; width: min(440px, 100%); text-align: left; }
+.account .card { background: var(--cream); border: 3px solid var(--wood); border-radius: 18px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.account .card h2 { margin: 0; font-size: 18px; }
+.account .card p { margin: 0; }
+.account .card .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.account .login-form { width: 100%; }
+.account .danger-zone { border-color: #c0392b; }
+.legal { max-width: 720px; margin: 0 auto; padding: 20px 18px 40px; background: var(--cream); min-height: 100%; line-height: 1.5; overflow-y: auto; height: 100%; }
+.legal h1 { margin: 8px 0 0; }
+.legal h2 { font-size: 18px; margin: 22px 0 6px; }
+.legal-table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.legal-table th, .legal-table td { border: 1px solid #d8c7a8; padding: 6px; text-align: left; vertical-align: top; }
+.legal-back { text-align: center; margin-top: 24px; }
+.login-form .btn { justify-content: center; }
+.login { height: 100%; } /* rola dentro do main: o degradê do céu não corta em telas longas */
+
+/* Loja de ouro (frente N) */
+.gold-row { display: flex; align-items: center; gap: 4px; }
+.money .gold-add { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #2e8b47; background: var(--green); color: #fff; font-weight: 900; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; box-shadow: 0 2px 0 #2e8b47; }
+.money .gold-add:active { transform: translateY(1px); box-shadow: none; }
+p.small { font-size: 13px; }
+
+/* =================== Design system das janelas (ui/kit.tsx) =================== */
+.t-title { font-size: var(--fs-title); font-weight: 900; color: var(--wood-dark); }
+.t-sub { font-size: var(--fs-sub); font-weight: 700; color: var(--ink-soft); }
+.t-label { font-size: var(--fs-label); font-weight: 800; color: var(--ink-soft); letter-spacing: .2px; }
+.t-num { font-size: var(--fs-num); font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.t-num .icon { vertical-align: -4px; }
+.dialog-body { font-size: var(--fs-body); }
+
+/* Cabeçalho (DialogHeader): ícone, título + selo, subtítulo e × */
+.dh-icon { flex: 0 0 auto; display: grid; place-items: center; }
+.dh-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dh-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.dialog-title.big { align-items: center; gap: var(--sp-3); margin: 0 0 var(--sp-2); }
+.dialog-title.big .dh-icon { width: 68px; height: 68px; background: #fff; border: 2px solid var(--line); border-radius: var(--r-lg); box-shadow: inset 0 -6px 0 #f6ead0; }
+.dialog-title.big h2 { font-size: 24px; }
+
+/* Card, Badge */
+.card { background: #fff; border: 2px solid var(--line); border-radius: var(--r); padding: var(--sp-2) var(--sp-3); }
+.card.gold { background: var(--cream-2); border-color: var(--gold); }
+.card.green { background: #e7ffe9; border-color: var(--green); }
+.card.red { background: #fff0ee; border-color: #e9a199; }
+.badge { display: inline-flex; align-items: center; gap: 3px; border-radius: 99px; padding: 2px 9px; font-size: 12px; font-weight: 900; line-height: 1.4; white-space: nowrap; color: #fff; background: var(--green-btn); }
+.badge.wood { background: var(--wood-dark); }
+.badge.red { background: var(--red-ink); }
+.badge.gold { background: var(--gold); color: var(--ink); }
+.badge.plain { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+
+/* StatChip: mini-cartões em grade de 2–3 colunas */
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--sp-2); }
+.stat { display: flex; align-items: center; gap: var(--sp-2); min-height: 48px; padding: 4px 10px; background: #fff; border: 2px solid var(--line); border-radius: 12px; cursor: help; }
+.stat:hover { border-color: var(--wood); }
+.stat-ic { flex: 0 0 26px; display: grid; place-items: center; font-size: 22px; line-height: 1; }
+.stat-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.stat.gold { background: #fff8dc; border-color: #f2c94c; }
+.stat.green { background: #ecfbec; border-color: #9fd8a8; }
+.stat.red { background: #fff1ef; border-color: #f0b0a8; }
+.stat-hint { min-height: 1.4em; margin: 6px 0 0; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+
+/* Stepper e botão principal (alvos de 44 px) */
+.stepper { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.step-btn { width: var(--tap); height: var(--tap); border: 2px solid var(--wood); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 24px; font-weight: 900; line-height: 1; cursor: pointer; box-shadow: 0 2px 0 var(--wood); }
+.step-btn:active { transform: translateY(2px); box-shadow: none; }
+.step-btn:disabled { opacity: .4; cursor: default; }
+.stepper input { width: 58px; height: var(--tap); font: inherit; font-size: 18px; font-weight: 900; text-align: center; color: var(--ink); background: #fff; border: 2px solid var(--wood); border-radius: 12px; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+.stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.btn.primary { min-height: 48px; padding: 8px 20px; font-size: 17px; justify-content: center; }
+.btn.block { width: 100%; }
+.btn.small { min-height: 36px; }
+
+/* ---------- Loja: grade à esquerda, ficha fixa à direita (no celular, a ficha é um bottom sheet) ---------- */
+.dialog.wide.shop-dialog { width: min(920px, 100%); max-height: min(94%, 780px); }
+/* Altura fixa no computador: trocar de aba não faz a janela pular */
+.dialog.wide.shop-dialog { height: min(94%, 640px); }
+.shop { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--sp-3); align-items: start; }
+.shop-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.cell-name { line-height: 1.15; text-align: center; }
+.cell .lock { background: none; padding: 0; top: 6px; left: 6px; }
+.cell:disabled .icon { filter: grayscale(.6); }
+.item-sheet { position: sticky; top: 0; display: flex; flex-direction: column; background: var(--cream-2); border: 2px solid var(--gold); border-radius: var(--r-lg); padding: var(--sp-3); }
+.item-sheet.empty { align-items: center; justify-content: center; gap: var(--sp-2); min-height: 240px; text-align: center; background: transparent; border: 2px dashed var(--line); color: var(--ink-soft); font-weight: 700; }
+.item-sheet.empty p { margin: 0; max-width: 220px; }
+.empty-ic { font-size: 34px; }
+.item-sheet .dialog-title.big .close { margin: -6px -6px 0 0; }
+.sheet-scrim { display: none; }
+/* Compra de enfeite/caminho (Loja › Decoração › Enfeites): cartão fixo embaixo da grade, como a ficha das outras abas. */
+.buy { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); padding: var(--sp-3); background: var(--cream); border: 3px solid var(--wood); border-radius: 16px; box-shadow: 0 -4px 0 rgba(0,0,0,.08); }
+.buy-info { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.buy-info b { font-size: 17px; }
+.buy-info small { color: var(--wood); font-weight: 700; line-height: 1.3; }
+.buy-bar { display: flex; align-items: center; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); padding-top: var(--sp-3); border-top: 2px dashed var(--line); }
+.buy-unit { margin-left: auto; }
+.buy-bar .btn.primary { flex: 1 0 100%; }
+.buy-total { display: inline-flex; align-items: center; gap: 4px; padding: 1px 10px 1px 6px; border-radius: 99px; background: rgba(0,0,0,.18); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px), (max-height: 500px), (pointer: coarse) and (max-width: 1100px) {
+  .dialog.wide.shop-dialog { height: 88dvh; max-height: 88dvh; }
+  .shop { display: block; }
+  .item-sheet.empty { display: none; }
+  /* Ficha sobe por cima da Loja, presa à moldura (a .dialog é o bloco de contenção) */
+  .sheet-scrim { display: block; position: absolute; inset: 0; z-index: 2; border: 0; padding: 0; background: rgba(40,25,10,.4); cursor: pointer; }
+  .item-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: auto; z-index: 3; max-height: 94%; overflow-y: auto; border: 0; border-top: 3px solid var(--gold);
+    border-radius: var(--r-lg) var(--r-lg) 0 0; padding: var(--sp-3) var(--sp-4) max(var(--sp-3), env(safe-area-inset-bottom)); box-shadow: 0 -8px 20px rgba(0,0,0,.25); animation: sheet-up .2s ease-out; }
+  .item-sheet::before { content: ''; display: block; flex: 0 0 auto; width: 44px; height: 5px; border-radius: 99px; background: #d9c39a; margin: -4px auto var(--sp-2); }
+  .btn.small { min-height: var(--tap); }
+  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .item-sheet { animation: none; } }
+
+/* ---------- Passe nas janelas (frente R) ---------- */
+.empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-4) var(--sp-3); text-align: center; color: var(--ink-soft); font-weight: 700; }
+.empty p { margin: 0; max-width: 340px; }
+.cell-btn { width: 100%; justify-content: center; gap: 3px; margin-top: var(--sp-1); padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.cell .t-label .icon, .m-reward .icon { vertical-align: -3px; }
+.big-num { font-size: 26px; }
+
+/* Missões: progresso com número, prêmio em selos, botão só quando dá para receber */
+.missions li { padding: var(--sp-2) var(--sp-3); }
+.m-progress { display: flex; align-items: center; gap: var(--sp-2); }
+.m-progress .bar { height: 12px; }
+.m-reward { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.missions .claim { flex: 0 0 auto; }
+
+/* Bônus do dia */
+.streak { margin: 0 0 var(--sp-3); }
+.streak li { padding: 6px 0; font-weight: 800; }
+.streak li small { font-weight: 800; color: var(--ink-soft); }
+.bonus-prize { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; margin-bottom: var(--sp-3); }
+.bonus-items { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2) var(--sp-4); }
+.bonus-item { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.bonus-seed { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.bonus-seed .t-num { white-space: normal; }
+
+/* Cachorro */
+.dog-state { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.dog-state-ic { font-size: 34px; line-height: 1; }
+.dog-state > span:last-child { display: flex; flex-direction: column; }
+.dog-state small { color: var(--ink-soft); font-weight: 700; }
+.dog-facts { margin-bottom: var(--sp-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--sp-3); }
+
+/* Amigos */
+.icon-btn { min-width: 40px; justify-content: center; }
+.add-friend input, .friend-find input { min-height: 40px; }
+.ranking li { padding: var(--sp-2) var(--sp-3); }
+
+/* Mural */
+.feed li { align-items: flex-start; }
+.feed-text { flex: 1; min-width: 0; }
+.feed li > small { flex: 0 0 auto; padding-top: 2px; }
+
+/* Mais: grupos e chave liga/desliga */
+.menu-head { margin: var(--sp-2) 0 var(--sp-1); text-transform: uppercase; }
+.menu-head:first-of-type { margin-top: 0; }
+.menu-list + .menu-head { margin-top: var(--sp-3); }
+.menu-note { margin-left: auto; color: var(--ink-soft); font-weight: 700; }
+.switch { position: relative; margin-left: auto; flex: 0 0 auto; width: 46px; height: 26px; border-radius: 99px; background: #cdbb98; transition: background .15s; }
+.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.switch.on { background: var(--green-btn); }
+.switch.on::after { transform: translateX(20px); }
+@media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
+
+@media (max-width: 760px), (max-height: 500px), (pointer: coarse) and (max-width: 1100px) {
+  .icon-btn { min-width: var(--tap); }
+  .add-friend input, .friend-find input { min-height: var(--tap); font-size: 16px; }
+  .missions li { flex-wrap: wrap; }
+  .missions .claim { flex: 1 1 100%; flex-direction: row; }
+  .missions .claim .btn { flex: 1; }
+  .streak { gap: 3px; }
+  .streak li { font-size: 11px; }
+  .sell-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+.sale-confirm { max-width: 440px; margin: 0 auto; gap: var(--sp-2); padding: var(--sp-4); }
+.sale-confirm p { margin: 0; }
+.cell .qty { top: 6px; right: 6px; min-width: 26px; padding: 1px 7px; border-radius: 99px; background: var(--wood-dark); color: #fff; text-shadow: none; font-size: 13px; text-align: center; }
+.cell .qty::before { content: '×'; opacity: .8; margin-right: 1px; }
+
+/* ---------- Frente L: faixa horizontal (HScroll) ---------- */
+.hs { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.hs-track {
+  flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x;
+  scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; padding-inline: var(--hs-pad, 0px); scroll-padding-inline: var(--hs-pad, 0px);
+}
+.hs-track::-webkit-scrollbar { display: none; }
+.hs-track > * { flex-shrink: 0; scroll-snap-align: start; }
+.dialog .hs-track { touch-action: pan-x pan-y; } /* dentro da janela, arrastar para cima ainda rola a janela */
+.hs.overflow .hs-track { cursor: grab; }
+.hs-track.dragging { cursor: grabbing; scroll-snap-type: none; scroll-behavior: auto; user-select: none; }
+.hs-track.dragging > * { pointer-events: none; }
+/* Degradê na borda do lado que continua (máscara: serve no creme da sacola e na madeira dos vizinhos). */
+.hs.can-prev .hs-track, .hs.can-next .hs-track { --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.hs.can-prev .hs-track { --fl: 22px; }
+.hs.can-next .hs-track { --fr: 22px; }
+/* Foco visível (por dentro: a borda de fora é cortada pela rolagem). */
+.hs-track:focus-visible { outline: 3px solid #ffb300; outline-offset: -3px; border-radius: 10px; }
+.hs-track > :focus-visible, .hs-track > * :focus-visible { outline: 3px solid #ffb300; outline-offset: -3px; }
+/* Setas ◀ ▶: botão redondo amarelo com contorno marrom, como as da sacola. */
+.hs-arrow { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 3px solid var(--wood); background: radial-gradient(circle at 35% 30%, #fff7b8, #ffd23f 55%, #f2a900); box-shadow: 0 2px 0 var(--wood); cursor: pointer; }
+.hs-arrow svg { fill: var(--wood); }
+.hs-arrow.prev svg { margin-left: -2px; }
+.hs-arrow.next svg { margin-right: -2px; }
+.hs-arrow:hover:not(:disabled) { filter: brightness(1.07); transform: scale(1.07); }
+.hs-arrow:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.hs-arrow:disabled { opacity: .35; filter: grayscale(.7); cursor: default; }
+.hs-tabs .hs-arrow { width: 26px; height: 26px; border-width: 2px; }
+.neighbors .hs-arrow { border-color: #5e3a19; box-shadow: 0 2px 0 #4a2c12; }
+/* Toque: arrasta com o dedo; as setas ficam só para mouse. */
+@media (hover: none), (pointer: coarse) { .hs-arrow { display: none; } }
+@media (prefers-reduced-motion: reduce) { .hs-track { scroll-behavior: auto; } .hs-arrow { transition: none; } }
+/* "+" do ouro (frente N): o desenho continua com 22 px, mas a área de toque chega a 44 px. */
+.money .gold-add { position: relative; background: var(--green-btn); border-color: var(--green-btn-edge); }
+.money .gold-add::before { content: ''; position: absolute; inset: -11px; }
+
+/* Mural com novidades, "Enquanto você estava fora" e Dúvidas */
+.btn.red { background: var(--red-ink); color: #fff; border-color: #7a2019; box-shadow: 0 3px 0 #7a2019, inset 0 2px 0 rgba(255,255,255,.22); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.feed li.new { border-color: #f2c14e; background: #fffaf0; }
+.feed-new { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 99px; background: var(--red-ink); color: #fff; font-size: 11px; text-transform: uppercase; }
+.feed li > .btn { flex: 0 0 auto; }
+.away li { align-items: center; }
+.away-ic { font-size: 22px; flex: 0 0 auto; }
+.faq details { background: #fff; border: 2px solid #ecd9b4; border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; }
+.faq summary { font-weight: 800; cursor: pointer; }
+.faq p { margin: 6px 0 2px; }
+/* Assistente: o que pede atenção na própria fazenda */
+.assist { position: relative; z-index: 4; margin: 0 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
+.assist-title { display: inline-flex; flex: none; }
+.assist-title .icon { width: 48px; height: 48px; filter: drop-shadow(0 2px 0 rgba(90, 50, 20, 0.45)); } /* ícone do Assistente (lote Q, A6) */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.assist-chip { pointer-events: auto; background: #fff3c4; border: 2px solid var(--gold); border-radius: 99px; padding: 2px 10px; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.assist-chip:hover { background: #ffe9a0; }
+@media (max-width: 760px) { .assist { margin: 0 8px; } .assist-title .icon { width: 32px; height: 32px; } .assist-chip { font-size: 12px; padding: 2px 8px; } }
+
+/* ---------- Evento sazonal (Evolução 09): banner, tigela, trocas e missões em cadeia ---------- */
+/* A frase vai na caixa lisa da tábua de cada arte (`art.text` em event-content.ts; EventBanner.tsx): posição em % da arte
+   e fonte em cqw, para o texto crescer e encolher junto com o banner (320–384 px) sem sair da madeira. */
+.event-banner { position: relative; display: block; container-type: inline-size; width: min(100%, 384px); aspect-ratio: 384 / 160;
+  background: center / contain no-repeat transparent; margin: 0 auto 6px; border: 0; padding: 0; font: inherit; }
+.event-banner-text { position: absolute; left: var(--tx); top: var(--ty); width: var(--tw); height: var(--th);
+  display: flex; align-items: center; justify-content: center; text-align: center; }
+.event-banner-text > span { max-width: 100%; font-weight: 900; color: #5a2d0c; font-size: var(--fs); line-height: 1.15;
+  text-shadow: 0 1px 0 #fff8; text-wrap: balance; }
+.event-banner.light .event-banner-text > span { color: #fff6d8; text-shadow: 0 1px 0 #1d1a4a, 0 0 4px #1d1a4a; }
+.event-banner.as-button { cursor: pointer; }
+.event-bowl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.event-bowl .bowl-img { width: 144px; height: auto; }
+.event-bowl .bowl-info { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.event-bowl .bowl-info h4 { margin: 6px 0 0; }
+.event-bowl .bowl-takers { width: 100%; }
+.event-bowl .event-note { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 520px) { .event-bowl { grid-template-columns: 1fr; justify-items: center; } .event-bowl .bowl-info { align-items: center; text-align: center; } }
+.event-trades li { justify-content: flex-start; }
+.event-trades li .feed-text { flex: 1; }
+.event-missions li.locked { opacity: .55; background: #f3ecdf; }
+.event-missions li > div > .muted { font-size: 13px; }
+.hud-btn.event-btn span { white-space: nowrap; }
+/* Evolução 13: árvore/boneco (objetos com amigos), presentes, meias, oficina e envio. */
+.event-obj { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.event-obj .obj-art { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 128px; }
+.event-obj .obj-art img { width: 128px; height: auto; }
+.event-obj .obj-emoji { font-size: 72px; line-height: 1; }
+.event-obj .obj-info { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
+.event-obj .obj-info p { margin: 0; max-width: 100%; overflow-wrap: break-word; }
+.event-obj .obj-needs { width: 100%; }
+.event-obj .obj-info > .m-progress { align-self: stretch; } /* sem isso a barra (flex: 1) fica com 0 px */
+.event-obj .obj-needs li { justify-content: flex-start; }
+.event-obj .obj-needs li .feed-text { flex: 1; min-width: 0; }
+.event-obj .obj-gifts { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.event-obj .obj-gifts h4 { margin: 6px 0 0; }
+.event-obj .obj-gifts p { margin: 0; }
+.gift-grid, .advent-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; width: 100%; }
+.gift-grid li, .advent-grid li { display: flex; flex-direction: column; align-items: center; gap: 2px; background: #fff; border: 2px solid #ecd9b4; border-radius: 10px; padding: 4px 2px; min-width: 0; }
+.gift-grid li small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.advent-grid li.today { border-color: var(--gold); background: #fff3c4; }
+.advent-grid li small { font-weight: 800; font-size: 12px; }
+.gift-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.gift-kind { display: grid; place-items: center; width: 52px; height: 52px; background: #fff; border: 2px solid #ecd9b4; border-radius: 10px; padding: 0; cursor: pointer; }
+.gift-kind.on { border-color: var(--gold); background: #fff3c4; box-shadow: 0 0 0 2px #f5c84288; }
+.event-advent, .event-workshop, .event-send { display: flex; flex-direction: column; gap: 8px; }
+.event-advent p, .event-workshop p, .event-send p { margin: 0; }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.advent-milestones li.done, .event-pieces li.done { background: #eef7e4; }
+.event-recipes li { justify-content: flex-start; }
+.event-recipes li .feed-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.event-recipes li.locked { opacity: .6; }
+.event-workshop .oven { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff3c4; border-radius: 10px; padding: 6px 10px; }
+.send-to { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; }
+.send-to select { min-height: 40px; font: inherit; border-radius: 8px; border: 2px solid #ecd9b4; padding: 0 8px; }
+@media (max-width: 520px) { .event-obj { grid-template-columns: 1fr; } .event-obj .obj-art { flex-direction: row; justify-content: center; } .event-obj .obj-art img { width: 96px; } }
+/* A janela do evento pode ser estreita mesmo com a tela larga (bug de 9/out/2026: o título do objetivo passava da
+   janela). Pela largura da própria janela: abaixo de 400 px de conteúdo, arte em cima e texto embaixo. */
+.event-dialog .dialog-body { container-type: inline-size; }
+.event-dialog .dialog-body p.big { overflow-wrap: break-word; }
+@container (max-width: 400px) {
+  .event-obj, .event-bowl { grid-template-columns: minmax(0, 1fr); }
+  .event-obj .obj-art { flex-direction: row; justify-content: center; } .event-obj .obj-art img { width: 96px; }
+  .event-bowl { justify-items: center; } .event-bowl .bowl-info { align-items: center; text-align: center; }
+}
+
+/* ---------- Evolução 10: polimento no celular ---------- */
+/* Aceite dos termos: caixa maior; os links ficam numa linha própria, fora do <label>. */
+.check input { width: 26px; height: 26px; }
+.signup-form .check { padding-block: 6px; }
+.terms-links { margin: -4px 0 4px 34px; }
+.terms-links a { display: inline-block; padding-block: 14px; }
+.signup-form .field input, .signup-form .field select { min-height: 48px; }
+/* Atalho de teclado só aparece para quem tem teclado. */
+@media (pointer: coarse) { .kbd-hint { display: none; } }
+@media (pointer: coarse) {
+  /* Área de toque de 44 px sem mudar o desenho (links de texto, chips, abas): faixa invisível em volta. */
+  .linkish, .linklike, .legal-links a, .assist-chip, .dog-risk, .subtabs button { position: relative; }
+  .linkish::after, .linklike::after, .legal-links a::after, .assist-chip::after, .dog-risk::after, .subtabs button::after {
+    content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; min-width: 44px; transform: translateY(-50%);
+  }
+  /* Abas rolam de lado: a faixa invisível estouraria a altura e a fileira rolaria na vertical; aqui a aba cresce. */
+  .tab { min-height: 44px; }
+  .zoom-btn { width: 44px; height: 44px; }
+  .close.small { min-width: 44px; min-height: 44px; }
+  .stepper .btn { min-width: 44px; }
+  .sound-row input[type=range] { min-height: 44px; }
+  .money .gold-add { flex: none; width: 26px; height: 26px; font-size: 18px; }
+}
+@media (max-width: 760px), (max-height: 500px), (pointer: coarse) and (max-width: 1100px) {
+  /* Tutorial e convite encostados à esquerda: os botões de zoom e o martelo (canto direito) ficam livres. */
+  .coach, .share-hook { left: 8px; right: 64px; width: auto; max-width: 440px; transform: none; }
+  .coach-body p { font-size: 14px; }
+
+  /* "Plantando Nabo (5) · Soltar ferramenta": idem (encostava no martelo); o texto quebra se faltar espaço. */
+  .tool-hint { left: 8px; right: auto; max-width: calc(100% - 72px); transform: none; white-space: normal; line-height: 1.15; }
+  .tool-hint .btn { white-space: nowrap; flex: none; }
+  /* Pedido de aviso no alto, abaixo da HUD: não tapa a roça. */
+  /* Centro por margem (não por transform: a animação de entrada usa transform e fazia o balão pular de lado). */
+  .push-ask { top: calc(max(8px, env(safe-area-inset-top)) + 104px); bottom: auto; left: 8px; right: 8px; margin-inline: auto; transform: none; }
+}
+/* Celular estreito: barra de ferramentas mais justa. As 7 da própria fazenda cabem com 44 px em 360 px (a mão ficava
+   cortada); as 8 da visita ficam com 44 px a partir de 390 px e repartem a largura abaixo disso (41 px em 360). */
+@media (max-width: 430px) {
+  .toolbar-tools { margin: 0 4px 6px; max-width: calc(100vw - 8px); padding: 4px 3px; gap: 1px; }
+  .tool { flex: 0 0 44px; width: 44px; height: 44px; }
+  .tool .icon { width: 34px; height: 34px; }
+  .toolbar-tools:has(> :nth-child(8)) .tool { flex: 0 0 min(44px, calc((100vw - 25px) / 8)); width: min(44px, calc((100vw - 25px) / 8)); height: 44px; }
+}
+/* Visita: o aviso ("Pegou 1 Nabo…") logo abaixo da barra da visita, sem cobrir o placar de roubos nem o Voltar. */
+.visit .toast { top: calc(100% + 6px); width: max-content; }
+/* Aviso flutuante: o toque atravessa (não bloqueia o X nem o título da janela) e, com janela aberta, fica mais
+   estreito para não cobrir o fechar. */
+.toast { pointer-events: none; }
+.game:has(.overlay) > .toast { max-width: calc(100% - 128px); font-size: 13px; }
+
+/* Servidor de teste fechado (APP_ENV=staging): selo discreto no alto, ao centro, sem pegar toque. */
+.staging-badge {
+  position: fixed; top: env(safe-area-inset-top); left: 50%; transform: translateX(-50%); z-index: 9999;
+  pointer-events: none; padding: 0 6px; border-radius: 0 0 6px 6px; background: rgba(0, 0, 0, .4); color: #fff;
+  font: 600 9px/1.5 system-ui, sans-serif; letter-spacing: .02em; opacity: .75;
+}
+
+/* ---------- Evolução 29: entrada por e-mail no celular ---------- */
+/* Respiro entre a madeira e os campos; campos mais leves (fonte >= 16 px: abaixo disso o iOS dá zoom no foco). */
+.farm-panel .login-form { gap: 14px; }
+.farm-panel .login-form input:not([type=checkbox]), .farm-panel .login-form select {
+  min-height: 52px; padding: 0 15px; border-width: 2px; font-size: 18px; line-height: 1.2; text-align: left; min-width: 0;
+}
+/* E-mail: centralizado só enquanto vazio (placeholder); digitando, alinha à esquerda e o cursor mostra o fim. */
+.farm-panel .login-form input[type=email]:placeholder-shown { text-align: center; }
+.farm-panel .btn.big { margin-top: 0; }
+/* Código de 6 números: monoespaçado, centralizado e cabendo em 320 px. O letter-spacing também entra depois do
+   último dígito; o padding-left igual compensa para o número ficar no meio de verdade. */
+.login-form input.code-input, .farm-panel .login-form input.code-input {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-weight: 900; font-size: clamp(24px, 7.5vw, 30px) !important;
+  letter-spacing: clamp(4px, 2vw, 10px); padding-left: calc(15px + clamp(4px, 2vw, 10px)); text-align: center;
+}
+/* Data de nascimento no iOS: o campo nativo tem largura e altura próprias; aqui segue o padrão dos outros campos. */
+.farm-panel .login-form input[type=date] { display: block; width: 100%; -webkit-appearance: none; appearance: none; }
+.farm-panel .login-form input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.farm-panel .login-form input[type=date]::-webkit-datetime-edit { padding: 0; }
+/* Rostos: encolhem com o painel em vez de passar da madeira. */
+.farm-panel .avatar-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.farm-panel .avatar-opt { width: 100%; max-width: 64px; height: auto; aspect-ratio: 1; }
+.farm-panel .sent-note { padding: 10px 14px; }
+/* A madeira ocupa ~73% da borda (panel_9slice): 10 px de padding dão ~15 px de creme entre a madeira e o campo. */
+.entry-panel { padding-inline: 10px; }
+/* Teclado aberto: espaço extra embaixo para o campo e o botão poderem subir acima dele (--kb vem do AuthForms). */
+.farm-screen { padding-bottom: var(--kb, 0px); }
+@media (max-width: 380px), (max-height: 760px) {
+  .entry-panel { padding-inline: 10px; }
+  .farm-panel .login-form input:not([type=checkbox]), .farm-panel .login-form select { min-height: 50px; font-size: 17px; }
+}
+@media (max-width: 360px) {
+  .farm-screen-content { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
+}

@@ -1,0 +1,64 @@
+# Ambiente local com Docker.
+#   docker compose up -d                       → Postgres 16 + Mailpit (para `npm run dev` com DATABASE_URL)
+#   docker compose --profile prod-local up -d  → + o app em modo produção (imagem do Dockerfile) em http://localhost:3200
+# Postgres em localhost:5433 (para não brigar com um Postgres da máquina); Mailpit: SMTP 1025, caixa em http://localhost:8025.
+# Portas trocáveis: PG_PORT, MAILPIT_SMTP_PORT, MAILPIT_UI_PORT, APP_PORT (ex.: MAILPIT_UI_PORT=8026 se já houver outro Mailpit).
+name: colheita-feliz
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: colheita
+      POSTGRES_PASSWORD: colheita
+      POSTGRES_DB: colheita
+    ports: ["127.0.0.1:${PG_PORT:-5433}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colheita -d colheita"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025", "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"]
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    restart: unless-stopped
+
+  app:
+    profiles: [prod-local]
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    depends_on:
+      db: { condition: service_healthy }
+      mailpit: { condition: service_started }
+    ports: ["127.0.0.1:${APP_PORT:-3200}:3000"]
+    environment:
+      DATABASE_URL: postgres://colheita:colheita@db:5432/colheita
+      # staging em tempo de execução: sem isso o login de teste e o pagamento falso ficam bloqueados num build de
+      # produção (server/flags.ts). A faixa "versão de teste" depende do APP_ENV do build, que aqui fica vazio.
+      APP_ENV: staging
+      APP_URL: http://localhost:${APP_PORT:-3200}
+      PUBLIC_URL: http://localhost:${APP_PORT:-3200}
+      # Segredo só de teste local (em produção: openssl rand -base64 32, guardado no provedor).
+      AUTH_SECRET: segredo-local-apenas-para-docker-nao-usar-em-producao
+      # http:// local: o cookie de sessão não pode exigir HTTPS.
+      COOKIE_SECURE: "0"
+      # Sem login de verdade ainda: o login de teste fica ligado só neste perfil local.
+      ALLOW_TEST_LOGIN: "1"
+      MAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM: "Colheita Feliz <nao-responda@colheita.local>"
+      LOG_LEVEL: info
+      # SENTRY_DSN, VAPID_*: vazios no local.
+    restart: unless-stopped
+
+volumes:
+  pgdata:
