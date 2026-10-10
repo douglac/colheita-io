@@ -11,3 +11,8 @@ export const PEEK_SCROLL = 'cf:peek-scroll'
 export const PEEK_JOIN = 'cf:peek-join'
 export const peekHref = (token: string) => `/espiar/${encodeURIComponent(token)}`
 export const peekExit = (from: string | null, token: string): 'back' | 'home' => (from === token ? 'back' : 'home')
+
+// Retorno do ranking do jogo: destino estritamente local, preservando fazenda visitada e categoria.
+export function rankingReturn(raw: unknown): string | null {
+  return typeof raw === 'string' && raw === raw.trim() && /^\/fazenda(?:\/[a-z0-9_]{3,20})?\?ranking=(nivel|moedas|popularidade)$/.test(raw) ? raw : null
+}

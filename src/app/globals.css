@@ -991,3 +991,9 @@ p.small { font-size: 13px; }
 @media (max-width: 360px) {
   .farm-screen-content { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
 }
+
+/* Ranking no jogo: dois escopos, categorias inteiras mesmo em 360 px. */
+.ranking-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.ranking-tabs .tab { flex: 1; min-width: 0; padding-inline: 6px; font-size: 14px; }
+.ranking-dialog .invite { margin-top: 12px; }
+.ranking-dialog .rk-name { overflow-wrap: anywhere; }

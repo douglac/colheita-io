@@ -44,7 +44,7 @@ export function OnlineNow() {
   )
 }
 
-const TABS: { id: Board; name: string }[] = [
+export const PUBLIC_RANK_TABS: { id: Board; name: string }[] = [
   { id: 'nivel', name: 'Nível' },
   { id: 'moedas', name: 'Moedas' },
   { id: 'popularidade', name: 'Popularidade' },
@@ -79,27 +79,12 @@ export function FeaturedFarms() {
       ) : (
         <>
           <div className="featured-tabs" role="tablist" aria-label="Ordenar por">
-            {TABS.map((t) => (
+            {PUBLIC_RANK_TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={t.id === tab} className={`tab ${t.id === tab ? 'on' : ''}`} onClick={() => setTab(t.id)}>{t.name}</button>
             ))}
           </div>
           {rows.length === 0 ? <p className="featured-empty">Ninguém nesta lista ainda.</p> : (
-            <ol className="featured-list">
-              {rows.map((r) => (
-                <li key={r.token}>
-                  <button className="featured-row" onClick={() => open(r)} aria-label={`${r.pos}º lugar, ${r.initials}, nível ${r.level}: ver a fazenda`}>
-                    {r.pos <= 3
-                      ? <ArtSeal src={`/art/ui/rank_${r.pos}.png`} className={`pos p${r.pos}`} label={`${r.pos}º lugar`}>{r.pos}</ArtSeal>
-                      : <span className="pos">{r.pos}</span>}
-                    <img className="featured-av" src={avatarSrc(r.avatar)} width={36} height={36} alt="" />
-                    <b className="featured-initials">{r.initials}</b>
-                    <span className="featured-lv">Nv {r.level}</span>
-                    <span className="featured-val">{valueOf[tab](r)}</span>
-                    <span className="featured-eye" aria-hidden>👀</span>
-                  </button>
-                </li>
-              ))}
-            </ol>
+            <PublicFarmList rows={rows} board={tab} onOpen={open} />
           )}
           <small className="featured-note">Só as iniciais. Toque para espiar a fazenda.</small>
         </>
@@ -121,4 +106,26 @@ function backFromPeek() {
     } else if (y) window.scrollTo(0, Number(y))
   })
   return () => cancelAnimationFrame(raf)
+}
+
+/** As mesmas linhas públicas na LP e no jogo; sem resolver identidade ou posição do jogador. */
+export function PublicFarmList({ rows, board, onOpen }: { rows: VitrineRow[]; board: Board; onOpen: (row: VitrineRow) => void }) {
+  return (
+    <ol className="featured-list">
+      {rows.map((r) => (
+        <li key={r.token}>
+          <button className="featured-row" onClick={() => onOpen(r)} aria-label={`${r.pos}º lugar, ${r.initials}, nível ${r.level}, ${valueOf[board](r)}: ver a fazenda`}>
+            {r.pos <= 3
+              ? <ArtSeal src={`/art/ui/rank_${r.pos}.png`} className={`pos p${r.pos}`} label={`${r.pos}º lugar`}>{r.pos}</ArtSeal>
+              : <span className="pos">{r.pos}</span>}
+            <img className="featured-av" src={avatarSrc(r.avatar)} width={36} height={36} alt="" />
+            <b className="featured-initials">{r.initials}</b>
+            <span className="featured-lv">Nv {r.level}</span>
+            <span className="featured-val">{valueOf[board](r)}</span>
+            <span className="featured-eye" aria-hidden>👀</span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  )
 }

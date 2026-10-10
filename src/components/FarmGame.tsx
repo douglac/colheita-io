@@ -41,8 +41,10 @@ import { Dialog } from './ui/Dialog'
 import { Avatar } from './Avatar'
 import { Icon } from './ui/Icon'
 import { SoundControls } from './SoundControls'
+import { rankingReturn } from '@/game/vitrine-text'
+import type { Board } from '@/server/vitrine'
 
-type Panel = null | 'event' | 'away' | 'help' | 'animal' | 'shop' | 'barn' | 'missions' | 'feed' | 'expand' | 'dog' | 'friends' | 'gifts' | 'noseed' | 'more' | 'gold' | 'sound'
+type Panel = null | 'ranking' | 'event' | 'away' | 'help' | 'animal' | 'shop' | 'barn' | 'missions' | 'feed' | 'expand' | 'dog' | 'friends' | 'gifts' | 'noseed' | 'more' | 'gold' | 'sound'
 type ActionFx = { xp?: number; gold?: number; item?: string; qty?: number }
 type ActionJson = {
   message?: string; error?: string; code?: string; bad?: boolean; fx?: ActionFx; readyAt?: number
@@ -115,6 +117,12 @@ export function FarmGame({ owner }: { owner?: string }) {
   const [offset, setOffset] = useState(0) // serverNow - Date.now()
   const [now, setNow] = useState(() => Date.now())
   const [panel, setPanel] = useState<Panel>(null)
+  const [rankingBoard, setRankingBoard] = useState<Board | undefined>()
+  useEffect(() => {
+    if (!rankingReturn(window.location.pathname + window.location.search)) return
+    setRankingBoard(new URLSearchParams(window.location.search).get('ranking') as Board)
+    setPanel('ranking')
+  }, [])
   const [eventTab, setEventTab] = useState<EventTab | undefined>(undefined)
   // Volta do pagamento por cartão (/fazenda?pedido=ord_…): reabre a loja de ouro acompanhando o pedido.
   const [payOrder, setPayOrder] = useState<string | null>(null)
@@ -674,7 +682,11 @@ export function FarmGame({ owner }: { owner?: string }) {
       {toast.wa && <a className="btn small toast-wa" href={toast.wa} target="_blank" rel="noopener noreferrer" onClick={() => setToast(null)}>WhatsApp</a>}
     </div>
   )
-  const close = () => { setPanel(null); setWant({}) }
+  const close = () => {
+    setPanel(null); setWant({}); setRankingBoard(undefined)
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('ranking')) { url.searchParams.delete('ranking'); window.history.replaceState(null, '', url.pathname + url.search) }
+  }
   // Evento sazonal (Evolução 09): selo da HUD conta missões para receber e o prêmio da tigela.
   const ev = data.event
   const evBadge = ev ? ev.missions.filter((m) => m.open && !m.claimed && m.progress >= m.target).length + (ev.bowl?.prizeReady ? 1 : 0) : 0
@@ -744,6 +756,7 @@ export function FarmGame({ owner }: { owner?: string }) {
             <Icon name="friends" emoji="👥" size={34} /><span>Amigos</span>
             {data.neighbors.filter((n) => n.friend && n.ripe > 0).length ? <em>✋</em> : null}
           </button>
+          <button className="hud-btn" data-ranking-entry onClick={() => { setRankingBoard(undefined); setPanel('ranking') }} title="Ranking"><span className="hud-emoji" aria-hidden>🏆</span><span>Ranking</span></button>
           <button className="hud-btn" onClick={() => { setWant({}); setPanel('gifts') }} title="Presentes">
             <Icon name="gift_daily" emoji="🎁" size={34} /><span>Presentes</span>{unthanked ? <em>{unthanked}</em> : null}
           </button>
@@ -869,7 +882,7 @@ export function FarmGame({ owner }: { owner?: string }) {
           <button onClick={() => setPanel('missions')}>
             <Icon name="mission" emoji="📋" size={30} /><span>Missões</span>{claimable ? <em>{claimable}</em> : null}
           </button>
-          <button onClick={() => setPanel('more')}><span className="tab-emoji">☰</span><span>Mais</span>{unthanked + muralNew ? <em>{unthanked + muralNew}</em> : null}</button>
+          <button data-ranking-return onClick={() => setPanel('more')}><span className="tab-emoji">☰</span><span>Mais</span>{unthanked + muralNew ? <em>{unthanked + muralNew}</em> : null}</button>
         </nav>
       </div>
 
@@ -917,6 +930,7 @@ export function FarmGame({ owner }: { owner?: string }) {
         <Dialog title="Mais" icon={<span className="hud-emoji" aria-hidden>⚙️</span>} onClose={close}>
           <h3 className="menu-head t-label">Fazenda</h3>
           <div className="menu-list">
+            <button className="btn" onClick={() => { setRankingBoard(undefined); setPanel('ranking') }}>🏆 Ranking</button>
             {ev && <button className="btn" onClick={() => setPanel('event')}><Icon name={ev.icon} emoji="🎃" size={26} /> {ev.name}{evBadge ? <em>{evBadge}</em> : null}</button>}
             <button className="btn" onClick={() => { setWant({}); setPanel('gifts') }}>
               <Icon name="gift_daily" emoji="🎁" size={26} /> Presentes{unthanked ? <em>{unthanked}</em> : null}
@@ -953,7 +967,7 @@ export function FarmGame({ owner }: { owner?: string }) {
           <p className="muted small center">A música muda de dia, de noite e quando você visita um amigo. As escolhas ficam salvas para a sua conta neste aparelho.</p>
         </Dialog>
       )}
-      {panel === 'friends' && <FriendsDialog me={{ ...me, level }} neighbors={data.neighbors} inventory={data.inventory} busy={busy} act={act}
+      {(panel === 'friends' || panel === 'ranking') && <FriendsDialog ranking={panel === 'ranking'} publicBoard={rankingBoard} me={{ ...me, level }} neighbors={data.neighbors} inventory={data.inventory} busy={busy} act={act}
         onGift={(to) => { setWant({ giftTo: to }); setPanel('gifts') }} onClose={close} />}
       {panel === 'feed' && (
         <MuralDialog events={data.events} seenId={seenId ?? 0} text={eventText} onClose={() => { markSeen(); close() }}

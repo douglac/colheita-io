@@ -11,6 +11,10 @@ import type { FarmPayload, SaleView } from '@/server/game'
 import { DecorShop, MyDecorPanel } from './DecorShop'
 import { HScroll } from './HScroll'
 import { Dialog } from './ui/Dialog'
+import { RankingTabs } from './ui/RankingTabs'
+import { PublicRanking } from './PublicRanking'
+import { PUBLIC_RANK_TABS } from './Vitrine'
+import type { Board } from '@/server/vitrine'
 import { Avatar } from './Avatar'
 import { Icon } from './ui/Icon'
 import { ArtSeal, Badge, Card, DialogHeader, PrimaryButton, StatChip, Stepper } from './ui/kit'
@@ -480,10 +484,13 @@ const RANK: Record<RankTab, { cmp: (a: Ranked, b: Ranked) => number; label: (n: 
 }
 const RANK_TABS: { id: RankTab; name: string }[] = [{ id: 'xp', name: 'Experiência' }, { id: 'ouro', name: 'Dinheiro' }, { id: 'pop', name: 'Popularidade' }]
 
-export function FriendsDialog({ me, neighbors, inventory, busy, act, onGift, onClose }: {
+export function FriendsDialog({ me, neighbors, inventory, busy, act, onGift, onClose, ranking = false, publicBoard }: {
+  ranking?: boolean; publicBoard?: Board
   me: Me; neighbors: FarmPayload['neighbors']; inventory: FarmPayload['inventory']; busy: boolean; act: Act
   onGift: (handle: string) => void; onClose: () => void
 }) {
+  const [scope, setScope] = useState<'friends' | 'public'>(publicBoard ? 'public' : 'friends')
+  const [board, setBoard] = useState<Board>(publicBoard ?? 'nivel')
   const flowers = inventory.filter((i) => i.itemId.startsWith('flor:'))
   const [tab, setTab] = useState<RankTab>('xp')
   const [find, setFind] = useState('')
@@ -500,21 +507,12 @@ export function FriendsDialog({ me, neighbors, inventory, busy, act, onGift, onC
   const shareText = `Bora jogar ${GAME_NAME_SHORT} comigo? Planta, colhe e (com jeitinho) pega da minha horta 😄 ${link}`
 
   return (
-    <Dialog title="Amigos" icon={<Icon name="friends" emoji="👥" size={36} />} onClose={onClose} wide
-      tabs={RANK_TABS} tab={tab} onTab={setTab}>
-      <Card tone="green" className="invite">
-        <Icon name="invite" emoji="💌" size={44} />
-        <div className="invite-text">
-          <b>Chame os amigos: cada um que entrar pelo seu link dá +{INVITE.gold} de ouro para os dois.</b>
-          <small>O primeiro amigo convidado ainda traz um Vira-lata para guardar sua horta.</small>
-        </div>
-        <div className="row">
-          <a className="btn green small" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer" onClick={() => noteShare('amigos')}>WhatsApp</a>
-          <button className="btn small" disabled={!link} onClick={async () => { noteShare('amigos'); await navigator.clipboard.writeText(link); setCopied(true) }}>
-            {copied ? 'Copiado!' : 'Copiar link'}
-          </button>
-        </div>
-      </Card>
+    <Dialog title={ranking ? 'Ranking' : 'Amigos'} icon={<Icon name="friends" emoji="👥" size={36} />} onClose={onClose} wide className="ranking-dialog" returnFocus="[data-ranking-entry], [data-ranking-return]">
+      <RankingTabs label="Escopo do ranking" tabs={[{ id: 'friends', name: 'Amigos' }, { id: 'public', name: 'Público' }]} tab={scope} onTab={setScope}>
+      {scope === 'public' ? <RankingTabs label="Ordenar ranking público" tabs={PUBLIC_RANK_TABS} tab={board} onTab={setBoard}>
+        <PublicRanking board={board} />
+      </RankingTabs> : <RankingTabs label="Ordenar ranking de amigos" tabs={RANK_TABS} tab={tab} onTab={setTab}>
+      <p className="muted small">Você e seus amigos · posição por {RANK_TABS.find((t) => t.id === tab)?.name.toLowerCase()}.</p>
 
       <div className="friend-find">
         <input type="search" placeholder="Buscar amigo pelo nome" aria-label="Buscar amigo pelo nome" value={find}
@@ -529,7 +527,7 @@ export function FriendsDialog({ me, neighbors, inventory, busy, act, onGift, onC
               : <span className="pos">{n.pos}</span>}
             <span className="nb-av small"><Avatar id={n.avatar} handle={n.handle} />{n.online && <b className="online" title="Online agora" />}</span>
             <span className="rk-name">
-              <b>{n.handle}</b>
+              <b>{n.handle}{n.handle === me.handle ? ' · Você' : ''}</b>
               <small>{RANK[tab].label(n)} · Nv {n.level}{n.isBot ? ' · vizinha' : ''}</small>
             </span>
             <span className="rk-flags">
@@ -560,6 +558,21 @@ export function FriendsDialog({ me, neighbors, inventory, busy, act, onGift, onC
           <button key={o.handle} className="linkish" onClick={() => setAdd(o.handle)}>{o.handle}</button>
         ))}</p>
       )}
+      <Card tone="green" className="invite">
+        <Icon name="invite" emoji="💌" size={44} />
+        <div className="invite-text">
+          <b>Chame os amigos: cada um que entrar pelo seu link dá +{INVITE.gold} de ouro para os dois.</b>
+          <small>O primeiro amigo convidado ainda traz um Vira-lata para guardar sua horta.</small>
+        </div>
+        <div className="row">
+          <a className="btn green small" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer" onClick={() => noteShare('amigos')}>WhatsApp</a>
+          <button className="btn small" disabled={!link} onClick={async () => { noteShare('amigos'); await navigator.clipboard.writeText(link); setCopied(true) }}>
+            {copied ? 'Copiado!' : 'Copiar link'}
+          </button>
+        </div>
+      </Card>
+      </RankingTabs>}
+      </RankingTabs>
     </Dialog>
   )
 }

@@ -3,7 +3,7 @@
 // mas só para olhar (Evo-27b). Só a câmera anda (arrastar, pinça, roda, com os limites do jogo); nenhum objeto
 // responde (sem roubar, ajudar, balão, ficha, cursor de mão nem som). Por cima, só a HUD mínima: iniciais, nível,
 // fechar e a faixa que leva ao login. Nada de apelido, avatar com nome ou id: o token é o opaco da vitrine.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { START_PLOTS } from '@/game/config'
 import { PEEK_FROM, PEEK_JOIN, peekExit } from '@/game/vitrine-text'
 import type { SceneDog, SceneLooks, ScenePlot } from '@/scene/FarmScene'
@@ -18,17 +18,19 @@ const BADGE_MS = 3000
 const noop = () => {}
 
 /** Fecha a tela: volta no histórico se veio da LP (a rolagem volta junto); por link direto, abre a LP. */
-export function leavePeek(token: string, join: boolean) {
+export function leavePeek(token: string, join: boolean, returnTo: string | null = null) {
   if (join) sessionStorage.setItem(PEEK_JOIN, '1')
   // Métricas: a conta que nascer deste navegador veio da vitrine (o cadastro manda e apaga a marca).
   if (join) try { localStorage.setItem('cf:origem', 'vitrine') } catch { /* sem armazenamento: conta como direta */ }
   const from = sessionStorage.getItem(PEEK_FROM)
   sessionStorage.removeItem(PEEK_FROM)
   if (peekExit(from, token) === 'back') history.back()
-  else location.replace('/')
+  else location.replace(returnTo ?? '/')
 }
 
-export function FarmPeekScreen({ token, body }: { token: string; body: PeekBody | null }) {
+export function FarmPeekScreen({ token, body, returnTo = null }: { token: string; body: PeekBody | null; returnTo?: string | null }) {
+  const closeButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => { closeButton.current?.focus({ preventScroll: true }) }, [])
   const [shown, setShown] = useState(false)
   const [badge, setBadge] = useState(true)
   useEffect(() => {
@@ -37,10 +39,10 @@ export function FarmPeekScreen({ token, body }: { token: string; body: PeekBody 
     return () => clearTimeout(t)
   }, [shown])
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') leavePeek(token, false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') leavePeek(token, false, returnTo) }
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
-  }, [token])
+  }, [token, returnTo])
   const gesture = () => setBadge(false)
 
   return (
@@ -52,7 +54,7 @@ export function FarmPeekScreen({ token, body }: { token: string; body: PeekBody 
             <span className="lvl">Nível {body.level}</span>
           </div>
         )}
-        <button type="button" className="peek-close" onClick={() => leavePeek(token, false)} aria-label="Fechar e voltar">✕</button>
+        <button ref={closeButton} type="button" className="peek-close" onClick={() => leavePeek(token, false, returnTo)} aria-label="Fechar e voltar">✕</button>
       </header>
       {body && (
         // Só a câmera responde: o modo vitrine desliga toque, hover e cursor de todos os objetos da cena.
@@ -67,14 +69,16 @@ export function FarmPeekScreen({ token, body }: { token: string; body: PeekBody 
       {!body ? (
         <div className="peek-wait peek-gone" role="status">
           <p>Essa fazenda saiu da vitrine.</p>
-          <button type="button" className="btn big" onClick={() => leavePeek(token, false)}>Voltar para o início</button>
+          <button type="button" className="btn big" onClick={() => leavePeek(token, false, returnTo)}>{returnTo ? 'Voltar ao ranking' : 'Voltar para o início'}</button>
         </div>
       ) : !shown && <p className="peek-wait" role="status">Abrindo a porteira…</p>}
       {body && shown && badge && <span className="peek-badge">👀 Só para olhar · arraste e dê zoom</span>}
       {body && (
         <footer className="peek-bar">
-          <span>Gostou? A sua começa com {START_PLOTS} lotes e sementes de graça.</span>
-          <button type="button" className="btn big" onClick={() => leavePeek(token, true)}>🌱 Entrar e plantar a sua</button>
+          {returnTo ? <button type="button" className="btn big" onClick={() => leavePeek(token, false, returnTo)}>Voltar ao ranking</button> : <>
+            <span>Gostou? A sua começa com {START_PLOTS} lotes e sementes de graça.</span>
+            <button type="button" className="btn big" onClick={() => leavePeek(token, true)}>🌱 Entrar e plantar a sua</button>
+          </>}
         </footer>
       )}
     </main>
